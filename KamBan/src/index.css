@@ -1,16 +1,13 @@
+@import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
 
-@tailwind base;
-
 @custom-variant dark (&:is(.dark *));
-@tailwind components;
-@tailwind utilities;
 
 @theme inline {
     --font-heading: var(--font-sans);
-    --font-sans: 'Inter Variable', sans-serif;
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,85 +46,228 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+
+    /* Kanban status color tokens */
+    --color-status-onboarding: var(--status-onboarding);
+    --color-status-onboarding-bg: var(--status-onboarding-bg);
+    --color-status-design: var(--status-design);
+    --color-status-design-bg: var(--status-design-bg);
+    --color-status-integration: var(--status-integration);
+    --color-status-integration-bg: var(--status-integration-bg);
+    --color-status-qa: var(--status-qa);
+    --color-status-qa-bg: var(--status-qa-bg);
+    --color-status-launched: var(--status-launched);
+    --color-status-launched-bg: var(--status-launched-bg);
 }
 
+/* ──────────────────────────────────────
+   Light theme tokens
+   ────────────────────────────────────── */
+
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
+    --background: oklch(0.98 0.005 250);
+    --foreground: oklch(0.15 0.02 260);
     --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
+    --card-foreground: oklch(0.15 0.02 260);
     --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
+    --popover-foreground: oklch(0.15 0.02 260);
+
+    --primary: oklch(0.55 0.18 260);
+    --primary-foreground: oklch(1 0 0);
+
+    --secondary: oklch(0.96 0.005 260);
+    --secondary-foreground: oklch(0.15 0.02 260);
+
+    --muted: oklch(0.96 0.005 260);
+    --muted-foreground: oklch(0.55 0.015 260);
+
+    --accent: oklch(0.95 0.008 260);
+    --accent-foreground: oklch(0.15 0.02 260);
+
+    --destructive: oklch(0.58 0.22 25);
+
+    --border: oklch(0.91 0.008 260);
+    --input: oklch(0.91 0.008 260);
+    --ring: oklch(0.55 0.18 260);
+
+    --chart-1: oklch(0.55 0.18 260);
+    --chart-2: oklch(0.62 0.15 160);
+    --chart-3: oklch(0.55 0.18 300);
+    --chart-4: oklch(0.7 0.16 60);
+    --chart-5: oklch(0.6 0.2 15);
+
     --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+
+    /* Sidebar - deep navy */
+    --sidebar: oklch(0.18 0.025 260);
+    --sidebar-foreground: oklch(0.8 0.01 260);
+    --sidebar-primary: oklch(0.55 0.18 260);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.24 0.02 260);
+    --sidebar-accent-foreground: oklch(1 0 0);
+    --sidebar-border: oklch(0.24 0.02 260);
+    --sidebar-ring: oklch(0.55 0.18 260);
+
+    /* Status colors */
+    --status-onboarding: oklch(0.55 0.18 260);
+    --status-design: oklch(0.55 0.18 300);
+    --status-integration: oklch(0.7 0.16 60);
+    --status-qa: oklch(0.62 0.15 160);
+    --status-launched: oklch(0.55 0.16 150);
+
+    --status-onboarding-bg: oklch(0.95 0.04 260);
+    --status-design-bg: oklch(0.95 0.04 300);
+    --status-integration-bg: oklch(0.95 0.04 60);
+    --status-qa-bg: oklch(0.95 0.04 160);
+    --status-launched-bg: oklch(0.95 0.04 150);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
-    --chart-1: oklch(0.87 0 0);
-    --chart-2: oklch(0.556 0 0);
-    --chart-3: oklch(0.439 0 0);
-    --chart-4: oklch(0.371 0 0);
-    --chart-5: oklch(0.269 0 0);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.556 0 0);
+    --background: oklch(0.14 0.02 260);
+    --foreground: oklch(0.95 0.005 260);
+    --card: oklch(0.18 0.02 260);
+    --card-foreground: oklch(0.95 0.005 260);
+    --popover: oklch(0.18 0.02 260);
+    --popover-foreground: oklch(0.95 0.005 260);
+    --primary: oklch(0.6 0.18 260);
+    --primary-foreground: oklch(1 0 0);
+    --secondary: oklch(0.24 0.02 260);
+    --secondary-foreground: oklch(0.95 0.005 260);
+    --muted: oklch(0.24 0.02 260);
+    --muted-foreground: oklch(0.6 0.015 260);
+    --accent: oklch(0.24 0.02 260);
+    --accent-foreground: oklch(0.95 0.005 260);
+    --destructive: oklch(0.55 0.2 25);
+    --border: oklch(0.26 0.015 260);
+    --input: oklch(0.26 0.015 260);
+    --ring: oklch(0.6 0.18 260);
+    --chart-1: oklch(0.6 0.18 260);
+    --chart-2: oklch(0.62 0.15 160);
+    --chart-3: oklch(0.6 0.18 300);
+    --chart-4: oklch(0.7 0.16 60);
+    --chart-5: oklch(0.6 0.2 15);
+    --sidebar: oklch(0.12 0.02 260);
+    --sidebar-foreground: oklch(0.8 0.01 260);
+    --sidebar-primary: oklch(0.6 0.18 260);
+    --sidebar-primary-foreground: oklch(1 0 0);
+    --sidebar-accent: oklch(0.2 0.015 260);
+    --sidebar-accent-foreground: oklch(0.95 0.005 260);
+    --sidebar-border: oklch(0.22 0.015 260);
+    --sidebar-ring: oklch(0.6 0.18 260);
+
+    --status-onboarding: oklch(0.65 0.18 260);
+    --status-design: oklch(0.65 0.18 300);
+    --status-integration: oklch(0.72 0.16 60);
+    --status-qa: oklch(0.65 0.15 160);
+    --status-launched: oklch(0.6 0.16 150);
+
+    --status-onboarding-bg: oklch(0.22 0.04 260);
+    --status-design-bg: oklch(0.22 0.04 300);
+    --status-integration-bg: oklch(0.22 0.04 60);
+    --status-qa-bg: oklch(0.22 0.04 160);
+    --status-launched-bg: oklch(0.22 0.04 150);
 }
+
+/* ──────────────────────────────────────
+   Base resets
+   ────────────────────────────────────── */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+  }
+  html, body, #root {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+  }
   body {
     @apply bg-background text-foreground;
-    }
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
   html {
     @apply font-sans;
-    }
+  }
+}
+
+/* ──────────────────────────────────────
+   Animations
+   ────────────────────────────────────── */
+
+@keyframes kanban-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kanban-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes kanban-scale-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes progress-fill {
+  from { width: 0%; }
+}
+
+@keyframes sparkline-draw {
+  from { stroke-dashoffset: 100; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.animate-kanban-fade-in {
+  animation: kanban-fade-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-kanban-slide-up {
+  animation: kanban-slide-up 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.animate-kanban-scale-in {
+  animation: kanban-scale-in 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Skeleton shimmer */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, var(--muted) 25%, var(--border) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Staggered children */
+.stagger-children > * {
+  animation: kanban-fade-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 40ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 80ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 160ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 200ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 280ms; }
+
+/* ──────────────────────────────────────
+   Scrollbar
+   ────────────────────────────────────── */
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
+
+/* ──────────────────────────────────────
+   Focus ring utility
+   ────────────────────────────────────── */
+
+.focus-ring {
+  @apply outline-none ring-2 ring-ring/40 ring-offset-2 ring-offset-background;
 }
