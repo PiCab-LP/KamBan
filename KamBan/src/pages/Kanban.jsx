@@ -223,7 +223,10 @@ export default function Kanban() {
   const columns = ['onboarding', 'design', 'integration', 'QA', 'launched'];
 
   async function fetchCompanies() {
-    const { data } = await supabase.from('companies').select('*');
+    const { data } = await supabase
+      .from('companies')
+      .select('*')
+      .order('position', { ascending: true });
     setCompanies(data || []);
   }
 
@@ -233,9 +236,19 @@ export default function Kanban() {
 
   const handleAddCompany = async () => {
     if (!newCompanyName.trim()) return;
+    
+    // Calcular la posición más alta actual para poner la nueva al final
+    const maxPos = companies.length > 0 
+      ? Math.max(...companies.map(c => c.position || 0)) 
+      : 0;
+
     const { data, error } = await supabase
       .from('companies')
-      .insert([{ name: newCompanyName, status: 'onboarding' }])
+      .insert([{ 
+        name: newCompanyName, 
+        status: 'onboarding',
+        position: maxPos + 1 
+      }])
       .select();
 
     if (!error && data) {
@@ -313,16 +326,26 @@ export default function Kanban() {
     const activeIndex = companies.findIndex(c => c.id === activeId);
     const overIndex = companies.findIndex(c => c.id === overId);
 
+    let newCompanies = companies;
     if (activeIndex !== overIndex) {
-      setCompanies((prev) => arrayMove(prev, activeIndex, overIndex));
+      newCompanies = arrayMove(companies, activeIndex, overIndex);
+      setCompanies(newCompanies);
     }
 
-    const activeCompany = companies.find(c => c.id === activeId);
-    if (activeCompany) {
-      await supabase
-        .from('companies')
-        .update({ status: activeCompany.status })
-        .eq('id', activeId);
+    // Persistencia masiva del nuevo orden y estados
+    const updates = newCompanies.map((company, index) => ({
+      id: company.id,
+      name: company.name,
+      status: company.status,
+      position: index // El nuevo orden es simplemente el índice en el array reordenado
+    }));
+
+    const { error } = await supabase
+      .from('companies')
+      .upsert(updates);
+    
+    if (error) {
+      console.error("Error al guardar el orden:", error);
     }
   };
 
