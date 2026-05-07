@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,13 +63,12 @@ function DroppableColumn({ id, children, count }) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col flex-shrink-0 w-[300px] rounded-3xl transition-all duration-300 ease-in-out border-2 ${
-        isOver ? 'bg-primary/5 border-primary/30 scale-[1.02] shadow-xl' : 'bg-muted/30 border-transparent'
-      }`}
+      className={`flex flex-col flex-shrink-0 w-[300px] rounded-3xl transition-all duration-300 ease-in-out border-2 ${isOver ? 'bg-primary/5 border-primary/30 scale-[1.02] shadow-xl' : 'bg-muted/30 border-transparent'
+        }`}
     >
       {/* Column Header */}
       <div className="px-5 pt-5 pb-4">
-        <div 
+        <div
           className="h-1.5 w-12 rounded-full mb-4"
           style={{ backgroundColor: `var(--status-${id})` }}
         />
@@ -141,13 +141,13 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
             {initials}
           </div>
           <div className="space-y-0.5">
-              <p className="text-xs font-bold text-foreground leading-tight line-clamp-1">
-                  {company.name}
-              </p>
-              <div className="flex items-center gap-1">
-                  <div className="w-1 h-1 rounded-full bg-primary/40" />
-                  <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Detalles</p>
-              </div>
+            <p className="text-xs font-bold text-foreground leading-tight line-clamp-1">
+              {company.name}
+            </p>
+            <div className="flex items-center gap-1">
+              <div className="w-1 h-1 rounded-full bg-primary/40" />
+              <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Detalles</p>
+            </div>
           </div>
         </div>
       </div>
@@ -161,11 +161,11 @@ function DraggableCard({ company, onEdit }) {
 
   return (
     <div ref={setNodeRef} style={{ opacity: isDragging ? 0.3 : 1 }} className="group">
-      <KanbanCardUI 
-        company={company} 
-        onEdit={onEdit} 
-        dragHandleProps={{...attributes, ...listeners}} 
-        isOverlay={false} 
+      <KanbanCardUI
+        company={company}
+        onEdit={onEdit}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isOverlay={false}
       />
     </div>
   );
@@ -181,7 +181,7 @@ export default function Kanban() {
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 5,
+        distance: 10,
       },
     })
   );
@@ -310,7 +310,7 @@ export default function Kanban() {
       {/* Kanban Board */}
       <DndContext 
         sensors={sensors}
-        collisionDetection={closestCenter} 
+        collisionDetection={closestCenter}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
@@ -320,25 +320,28 @@ export default function Kanban() {
             const columnCompanies = companies.filter(c => c.status === col);
             return (
               <DroppableColumn key={col} id={col} count={columnCompanies.length}>
-                  {columnCompanies.map((company) => (
-                    <DraggableCard
-                      key={company.id}
-                      company={company}
-                      onEdit={(c) => setEditingCompany(c)}
-                    />
-                  ))}
+                {columnCompanies.map((company) => (
+                  <DraggableCard
+                    key={company.id}
+                    company={company}
+                    onEdit={(c) => setEditingCompany(c)}
+                  />
+                ))}
               </DroppableColumn>
             );
           })}
         </div>
-        <DragOverlay dropAnimation={{
-          duration: 250,
-          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-        }}>
-          {activeCompany ? (
-            <KanbanCardUI company={activeCompany} isOverlay={true} />
-          ) : null}
-        </DragOverlay>
+        {createPortal(
+          <DragOverlay dropAnimation={{
+            duration: 250,
+            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+          }}>
+            {activeCompany ? (
+              <KanbanCardUI company={activeCompany} isOverlay={true} />
+            ) : null}
+          </DragOverlay>,
+          document.body
+        )}
       </DndContext>
 
       {/* Company Details Modal */}
