@@ -6,7 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { GripVertical, Plus } from 'lucide-react';
-import { DndContext, closestCenter, useDroppable, DragOverlay, useSensors, useSensor, PointerSensor, useDraggable } from '@dnd-kit/core';
+import { 
+  DndContext, 
+  closestCenter, 
+  closestCorners,
+  useDroppable, 
+  DragOverlay, 
+  useSensors, 
+  useSensor, 
+  PointerSensor,
+  KeyboardSensor
+} from '@dnd-kit/core';
+import { 
+  SortableContext, 
+  verticalListSortingStrategy, 
+  useSortable, 
+  arrayMove,
+  sortableKeyboardCoordinates
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { CompanyDetailsModal } from './CompanyDetailsModal';
 import '../App.css';
 
@@ -155,12 +173,25 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
   );
 }
 
-// 3. Draggable Wrapper
-function DraggableCard({ company, onEdit }) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: company.id });
+// 3. Sortable Wrapper
+function SortableCard({ company, onEdit }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: company.id });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    opacity: isDragging ? 0.3 : 1,
+  };
 
   return (
-    <div ref={setNodeRef} style={{ opacity: isDragging ? 0.3 : 1 }} className="group">
+    <div ref={setNodeRef} style={style} className="group">
       <KanbanCardUI
         company={company}
         onEdit={onEdit}
@@ -183,6 +214,9 @@ export default function Kanban() {
       activationConstraint: {
         distance: 10,
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
@@ -215,22 +249,81 @@ export default function Kanban() {
     setActiveId(event.active.id);
   };
 
-  const handleDragEnd = async (event) => {
-    setActiveId(null);
+  const handleDragOver = (event) => {
     const { active, over } = event;
     if (!over) return;
-    const companyId = active.id;
-    let newStatus = over.id;
 
-    const droppedOnCompany = companies.find(c => c.id === over.id);
-    if (droppedOnCompany) newStatus = droppedOnCompany.status;
+    const activeId = active.id;
+    const overId = over.id;
 
-    if (!columns.includes(newStatus)) return;
-    const activeCompany = companies.find(c => c.id === companyId);
-    if (activeCompany.status === newStatus) return;
+    if (activeId === overId) return;
 
-    setCompanies((prev) => prev.map(c => c.id === companyId ? { ...c, status: newStatus } : c));
-    await supabase.from('companies').update({ status: newStatus }).eq('id', companyId);
+    const activeCompany = companies.find(c => c.id === activeId);
+    const overCompany = companies.find(c => c.id === overId);
+
+    if (!activeCompany) return;
+
+    const activeContainer = activeCompany.status;
+    const overContainer = overCompany ? overCompany.status : overId;
+
+    if (!columns.includes(overContainer)) return;
+
+    if (activeContainer !== overContainer) {
+      setCompanies((prev) => {
+        const activeIndex = prev.findIndex(c => c.id === activeId);
+        
+        // Si estamos sobre otra tarjeta, usamos su índice
+        // Si estamos sobre una columna vacía, lo mandamos al final
+        let overIndex;
+        if (overCompany) {
+          overIndex = prev.findIndex(c => c.id === overId);
+        } else {
+          // Encontrar el último índice de esa columna
+          const lastIndexInCol = prev.map((c, i) => c.status === overContainer ? i : -1).reduce((max, i) => Math.max(max, i), -1);
+          overIndex = lastIndexInCol !== -1 ? lastIndexInCol + 1 : prev.length;
+        }
+
+        const updated = [...prev];
+        updated[activeIndex] = { ...activeCompany, status: overContainer };
+        
+        return arrayMove(updated, activeIndex, Math.min(overIndex, updated.length - 1));
+      });
+    } else {
+      // Reordenamiento en la misma columna
+      setCompanies((prev) => {
+        const activeIndex = prev.findIndex(c => c.id === activeId);
+        const overIndex = prev.findIndex(c => c.id === overId);
+        if (activeIndex !== overIndex) {
+          return arrayMove(prev, activeIndex, overIndex);
+        }
+        return prev;
+      });
+    }
+  };
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    const activeIndex = companies.findIndex(c => c.id === activeId);
+    const overIndex = companies.findIndex(c => c.id === overId);
+
+    if (activeIndex !== overIndex) {
+      setCompanies((prev) => arrayMove(prev, activeIndex, overIndex));
+    }
+
+    const activeCompany = companies.find(c => c.id === activeId);
+    if (activeCompany) {
+      await supabase
+        .from('companies')
+        .update({ status: activeCompany.status })
+        .eq('id', activeId);
+    }
   };
 
   const handleDragCancel = () => {
@@ -310,8 +403,9 @@ export default function Kanban() {
       {/* Kanban Board */}
       <DndContext 
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={closestCorners}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
       >
@@ -320,24 +414,34 @@ export default function Kanban() {
             const columnCompanies = companies.filter(c => c.status === col);
             return (
               <DroppableColumn key={col} id={col} count={columnCompanies.length}>
-                {columnCompanies.map((company) => (
-                  <DraggableCard
-                    key={company.id}
-                    company={company}
-                    onEdit={(c) => setEditingCompany(c)}
-                  />
-                ))}
+                <SortableContext 
+                  items={columnCompanies.map(c => c.id)} 
+                  strategy={verticalListSortingStrategy}
+                >
+                  {columnCompanies.map((company) => (
+                    <SortableCard
+                      key={company.id}
+                      company={company}
+                      onEdit={(c) => setEditingCompany(c)}
+                    />
+                  ))}
+                </SortableContext>
               </DroppableColumn>
             );
           })}
         </div>
         {createPortal(
-          <DragOverlay dropAnimation={{
-            duration: 250,
-            easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-          }}>
+          <DragOverlay 
+            zIndex={1000}
+            dropAnimation={{
+              duration: 250,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}
+          >
             {activeCompany ? (
-              <KanbanCardUI company={activeCompany} isOverlay={true} />
+              <div className="w-[280px]">
+                <KanbanCardUI company={activeCompany} isOverlay={true} />
+              </div>
             ) : null}
           </DragOverlay>,
           document.body
