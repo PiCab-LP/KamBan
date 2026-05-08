@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabaseClient';
-import { ChevronDown, Search, Building, Globe, Check } from 'lucide-react';
+import { ChevronDown, Search, Building, Globe, Check, Trash2 } from 'lucide-react';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
-export function TaskModal({ isOpen, onClose, task, onSave }) {
+export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
     const [title, setTitle] = useState('');
     const [details, setDetails] = useState('');
     const [companyId, setCompanyId] = useState('');
@@ -20,6 +21,7 @@ export function TaskModal({ isOpen, onClose, task, onSave }) {
     const [companies, setCompanies] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
     const [companySearch, setCompanySearch] = useState('');
+    const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
     const selectedCompany = useMemo(() => 
         companies.find(c => c.id === companyId), 
@@ -68,8 +70,15 @@ export function TaskModal({ isOpen, onClose, task, onSave }) {
         onClose();
     };
 
+    const handleDelete = async () => {
+        onDelete(task.id);
+        setIsConfirmOpen(false);
+        onClose();
+    };
+
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <>
+            <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl bg-card">
                 <DialogHeader className="pb-2">
                     <DialogTitle className="text-xl font-black tracking-tight">
@@ -185,24 +194,47 @@ export function TaskModal({ isOpen, onClose, task, onSave }) {
                         />
                     </div>
 
-                    <div className="flex justify-end gap-3 mt-2">
-                        <Button 
-                            variant="ghost" 
-                            onClick={onClose}
-                            className="text-xs font-bold h-11 px-6 rounded-xl hover:bg-muted"
-                        >
-                            Cancelar
-                        </Button>
-                        <Button 
-                            onClick={handleSave} 
-                            disabled={!title.trim() || isSaving}
-                            className="text-xs font-black h-11 px-8 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
-                        >
-                            {isSaving ? 'Guardando...' : 'Guardar Pendiente'}
-                        </Button>
+                    <div className="flex justify-between items-center gap-3 mt-2">
+                        <div>
+                            {task && (
+                                <Button 
+                                    variant="ghost" 
+                                    onClick={() => setIsConfirmOpen(true)}
+                                    className="text-xs font-bold h-11 px-4 rounded-xl text-destructive hover:text-destructive hover:bg-destructive/10 transition-all"
+                                >
+                                    <Trash2 size={16} className="mr-2" />
+                                    Eliminar
+                                </Button>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            <Button 
+                                variant="ghost" 
+                                onClick={onClose}
+                                className="text-xs font-bold h-11 px-6 rounded-xl hover:bg-muted"
+                            >
+                                Cancelar
+                            </Button>
+                            <Button 
+                                onClick={handleSave} 
+                                disabled={!title.trim() || isSaving}
+                                className="text-xs font-black h-11 px-8 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
+                            >
+                                {isSaving ? 'Guardando...' : 'Guardar Pendiente'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </DialogContent>
         </Dialog>
-    );
+
+        <ConfirmDeleteModal 
+            isOpen={isConfirmOpen}
+            onClose={() => setIsConfirmOpen(false)}
+            onConfirm={handleDelete}
+            title="¿Eliminar pendiente?"
+            description="Este pendiente se borrará permanentemente. Esta acción no se puede revertir."
+        />
+    </>
+);
 }

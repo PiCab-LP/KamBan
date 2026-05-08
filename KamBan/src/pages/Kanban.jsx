@@ -167,15 +167,6 @@ const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit, onDelete }) => {
               <h4 className="text-xs font-black text-foreground leading-snug line-clamp-2">
                 {task.title}
               </h4>
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(task.id);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 -mr-1 -mt-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-              >
-                <Trash2 size={14} strokeWidth={2.5} />
-              </button>
             </div>
             <div className="flex items-center gap-1 opacity-60">
               <div className={`w-1.5 h-1.5 rounded-full ${isLaunched ? 'bg-status-done' : 'bg-primary/40'}`} />
@@ -474,6 +465,7 @@ export default function Kanban() {
     onClose={() => setIsModalOpen(false)}
     task={editingTask}
     onSave={handleSaveTask}
+    onDelete={handleDeleteTask}
   />
     </div >
   );
