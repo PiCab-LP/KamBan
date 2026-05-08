@@ -1,9 +1,10 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { BarChart3, Kanban, Layers } from 'lucide-react';
+import { BarChart3, Kanban, Layers, StickyNote } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: BarChart3, label: 'Dashboard' },
   { to: '/kanban', icon: Kanban, label: 'Tablero Kanban' },
+  { to: '/notas', icon: StickyNote, label: 'Notas del Equipo' },
 ];
 
 export default function Layout() {

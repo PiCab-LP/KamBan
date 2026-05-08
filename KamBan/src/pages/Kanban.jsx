@@ -4,25 +4,24 @@ import { supabase } from '../lib/supabaseClient';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { GripVertical, Plus } from 'lucide-react';
-import { 
-  DndContext, 
-  closestCenter, 
+import {
+  DndContext,
+  closestCenter,
   closestCorners,
-  useDroppable, 
-  DragOverlay, 
-  useSensors, 
-  useSensor, 
+  useDroppable,
+  DragOverlay,
+  useSensors,
+  useSensor,
   PointerSensor,
   KeyboardSensor,
   pointerWithin,
   rectIntersection
 } from '@dnd-kit/core';
-import { 
-  SortableContext, 
-  verticalListSortingStrategy, 
-  useSortable, 
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
   arrayMove,
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable';
@@ -212,8 +211,6 @@ function SortableCard({ company, onEdit }) {
 
 export default function Kanban() {
   const [companies, setCompanies] = useState([]);
-  const [newCompanyName, setNewCompanyName] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [activeId, setActiveId] = useState(null);
 
@@ -256,30 +253,6 @@ export default function Kanban() {
     fetchCompanies();
   }, []);
 
-  const handleAddCompany = async () => {
-    if (!newCompanyName.trim()) return;
-    
-    // Calcular la posición más alta actual para poner la nueva al final
-    const maxPos = companies.length > 0 
-      ? Math.max(...companies.map(c => c.position || 0)) 
-      : 0;
-
-    const { data, error } = await supabase
-      .from('companies')
-      .insert([{ 
-        name: newCompanyName, 
-        status: 'onboarding',
-        position: maxPos + 1 
-      }])
-      .select();
-
-    if (!error && data) {
-      setCompanies([...companies, ...data]);
-      setNewCompanyName("");
-      setIsDialogOpen(false);
-    }
-  };
-
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
   };
@@ -309,7 +282,7 @@ export default function Kanban() {
     if (activeContainer !== overContainer) {
       setCompanies((prev) => {
         const activeIndex = prev.findIndex(c => c.id === activeId);
-        
+
         // Si estamos sobre otra tarjeta, usamos su índice
         // Si estamos sobre una columna vacía, lo mandamos al final
         let overIndex;
@@ -322,14 +295,14 @@ export default function Kanban() {
         }
 
         const updated = [...prev];
-        updated[activeIndex] = { 
-          ...activeCompany, 
+        updated[activeIndex] = {
+          ...activeCompany,
           status: overContainer,
-          launch_date: (overContainer === 'launched' && !activeCompany.launch_date) 
-            ? new Date().toISOString() 
+          launch_date: (overContainer === 'launched' && !activeCompany.launch_date)
+            ? new Date().toISOString()
             : activeCompany.launch_date
         };
-        
+
         return arrayMove(updated, activeIndex, Math.min(overIndex, updated.length - 1));
       });
     } else {
@@ -375,7 +348,7 @@ export default function Kanban() {
     const { error } = await supabase
       .from('companies')
       .upsert(updates);
-    
+
     if (error) {
       console.error("Error al guardar el orden:", error);
     }
@@ -399,116 +372,62 @@ export default function Kanban() {
             Arrastra las companias entre columnas para actualizar su estado.
           </p>
         </div>
-
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              className="gap-2 text-[13px] font-semibold px-5 h-10 rounded-xl"
-              style={{
-                background: 'hsl(217 91% 60%)',
-                color: 'white',
-                boxShadow: '0 2px 8px hsla(217, 91%, 60%, 0.3)',
-              }}
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              Nueva Compania
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-md rounded-2xl">
-            <DialogHeader>
-              <DialogTitle className="text-[17px] font-bold tracking-tight">
-                Agregar Nueva Compania
-              </DialogTitle>
-              <DialogDescription className="text-[13px] text-muted-foreground">
-                Ingresa el nombre de la compania para comenzar su proceso de integracion.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="flex flex-col gap-4 pt-2">
-              <Input
-                placeholder="Nombre de la empresa"
-                value={newCompanyName}
-                onChange={(e) => setNewCompanyName(e.target.value)}
-                className="h-11 text-[14px] rounded-xl border-border/60"
-                onKeyDown={(e) => e.key === 'Enter' && handleAddCompany()}
-              />
-              <div className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsDialogOpen(false)}
-                  className="text-[13px] h-10 rounded-lg"
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  onClick={handleAddCompany}
-                  className="text-[13px] h-10 rounded-lg"
-                  style={{
-                    background: 'hsl(217 91% 60%)',
-                    color: 'white',
-                  }}
-                >
-                  Guardar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
       </div>
 
-      {/* Kanban Board */}
-      <DndContext 
-        sensors={sensors}
-        collisionDetection={collisionDetectionStrategy}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
-      >
-        <div className="h-[calc(100vh-180px)] flex gap-4 overflow-x-auto pb-4">
-          {columns.map((col) => {
-            const columnCompanies = companies.filter(c => c.status === col);
-            return (
-              <DroppableColumn key={col} id={col} count={columnCompanies.length}>
-                <SortableContext 
-                  items={columnCompanies.map(c => c.id)} 
-                  strategy={verticalListSortingStrategy}
-                >
-                  {columnCompanies.map((company) => (
-                    <SortableCard
-                      key={company.id}
-                      company={company}
-                      onEdit={(c) => setEditingCompany(c)}
-                    />
-                  ))}
-                </SortableContext>
-              </DroppableColumn>
-            );
-          })}
-        </div>
-        {createPortal(
-          <DragOverlay 
-            zIndex={1000}
-            dropAnimation={{
-              duration: 250,
-              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-            }}
-          >
-            {activeCompany ? (
-              <div className="w-[280px]">
-                <KanbanCardUI company={activeCompany} isOverlay={true} />
-              </div>
-            ) : null}
-          </DragOverlay>,
-          document.body
-        )}
-      </DndContext>
-
-      {/* Company Details Modal */}
-      <CompanyDetailsModal
-        company={editingCompany}
-        onClose={() => setEditingCompany(null)}
-        onUpdate={fetchCompanies}
-      />
+      {/* Kanban Board */ }
+  <DndContext
+    sensors={sensors}
+    collisionDetection={collisionDetectionStrategy}
+    onDragStart={handleDragStart}
+    onDragOver={handleDragOver}
+    onDragEnd={handleDragEnd}
+    onDragCancel={handleDragCancel}
+  >
+    <div className="h-[calc(100vh-180px)] flex gap-4 overflow-x-auto pb-4">
+      {columns.map((col) => {
+        const columnCompanies = companies.filter(c => c.status === col);
+        return (
+          <DroppableColumn key={col} id={col} count={columnCompanies.length}>
+            <SortableContext
+              items={columnCompanies.map(c => c.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {columnCompanies.map((company) => (
+                <SortableCard
+                  key={company.id}
+                  company={company}
+                  onEdit={(c) => setEditingCompany(c)}
+                />
+              ))}
+            </SortableContext>
+          </DroppableColumn>
+        );
+      })}
     </div>
+    {createPortal(
+      <DragOverlay
+        zIndex={1000}
+        dropAnimation={{
+          duration: 250,
+          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+        }}
+      >
+        {activeCompany ? (
+          <div className="w-[280px]">
+            <KanbanCardUI company={activeCompany} isOverlay={true} />
+          </div>
+        ) : null}
+      </DragOverlay>,
+      document.body
+    )}
+  </DndContext>
+
+  {/* Company Details Modal */ }
+  <CompanyDetailsModal
+    company={editingCompany}
+    onClose={() => setEditingCompany(null)}
+    onUpdate={fetchCompanies}
+  />
+    </div >
   );
 }

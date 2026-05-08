@@ -65,7 +65,10 @@ export function CompanyDetailsModal({ company, onClose, onUpdate }) {
     }, [company]);
 
     async function fetchData() {
-        const { data: ck } = await supabase.from('company_checklists').select('*').eq('company_id', company.id);
+        const { data: ck } = await supabase.from('company_checklists')
+            .select('*')
+            .eq('company_id', company.id)
+            .order('position', { ascending: true });
         const { data: nt } = await supabase.from('notes').select('content').eq('company_id', company.id).single();
 
         setChecklists(ck || []);

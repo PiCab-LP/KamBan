@@ -67,7 +67,8 @@ export default function CompanyDetail() {
         const { data: tasksData, error: tasksError } = await supabase
             .from('company_checklists')
             .select('*')
-            .eq('company_id', companyId);
+            .eq('company_id', companyId)
+            .order('position', { ascending: true });
 
         if (tasksError) {
             console.error("Error fetching tasks:", tasksError);

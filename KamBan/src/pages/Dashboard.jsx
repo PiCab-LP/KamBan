@@ -11,15 +11,18 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@/components/ui/dropdown-menu";
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+    DialogDescription
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import {
-    Building2, Activity, Rocket, Search, Filter, MoreHorizontal,
-    ArrowUpRight, Eye, Archive, Calendar,
-    ChevronDown, Kanban
+    Building2, Activity, Rocket, Search, Filter,
+    ArrowUpRight, Eye, Calendar, Plus,
+    ChevronDown, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import '../App.css';
@@ -142,7 +145,7 @@ function StatCard({ icon: Icon, label, value, delay = 0, trend, trendLabel, colo
                     >
                         <Icon size={24} strokeWidth={2.5} style={{ color: color || 'var(--primary)' }} />
                     </div>
-                    
+
                     <div className="flex-1 flex flex-col items-start text-left min-w-0">
                         <p className="text-[11px] font-black text-muted-foreground/50 uppercase tracking-[0.15em] truncate w-full mb-1">{label}</p>
                         <div className="flex items-baseline gap-2.5">
@@ -188,18 +191,27 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [newCompanyName, setNewCompanyName] = useState("");
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const ITEMS_PER_PAGE = 10;
     const navigate = useNavigate();
 
     useEffect(() => {
         fetchCompanies();
     }, []);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterStatus]);
+
     async function fetchCompanies() {
         try {
             setLoading(true);
             const { data, error } = await supabase
                 .from('companies')
-                .select('*');
+                .select('*')
+                .order('created_at', { ascending: false });
 
             if (error) throw error;
             setCompanies(data || []);
@@ -209,6 +221,32 @@ export default function Dashboard() {
             setLoading(false);
         }
     }
+
+    const handleAddCompany = async () => {
+        if (!newCompanyName.trim()) return;
+
+        // Calcular la posición más alta actual para poner la nueva al final en el Kanban
+        const maxPos = companies.length > 0
+            ? Math.max(...companies.map(c => c.position || 0))
+            : 0;
+
+        const { data, error } = await supabase
+            .from('companies')
+            .insert([{
+                name: newCompanyName,
+                status: 'onboarding',
+                position: maxPos + 1
+            }])
+            .select();
+
+        if (!error && data) {
+            setNewCompanyName("");
+            setIsDialogOpen(false);
+            fetchCompanies(); // Refrescar la lista
+        } else if (error) {
+            console.error("Error al agregar compañia:", error.message);
+        }
+    };
 
     if (loading) return <LoadingSkeleton />;
 
@@ -227,6 +265,12 @@ export default function Dashboard() {
         return matchSearch && matchStatus;
     });
 
+    const totalPages = Math.ceil(filteredCompanies.length / ITEMS_PER_PAGE);
+    const paginatedCompanies = filteredCompanies.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
     return (
         <div className="p-6 lg:p-10 max-w-[1400px] mx-auto w-full space-y-10">
 
@@ -238,18 +282,69 @@ export default function Dashboard() {
                             Directorio de Compañías
                         </h1>
                     </div>
-                    <div className="relative w-full md:w-80 group">
-                        <Search
-                            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors"
-                            size={18}
-                        />
-                        <input
-                            type="text"
-                            placeholder="Buscar empresa..."
-                            className="w-full h-11 pl-11 pr-4 bg-card border border-border/60 rounded-2xl text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/40 transition-all shadow-sm"
-                            value={searchTerm}
-                            onChange={(event) => setSearchTerm(event.target.value)}
-                        />
+                    <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:w-auto">
+                        <div className="relative w-full md:w-80 group">
+                            <Search
+                                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors"
+                                size={18}
+                            />
+                            <input
+                                type="text"
+                                placeholder="Buscar empresa..."
+                                className="w-full h-11 pl-11 pr-4 bg-card border border-border/60 rounded-2xl text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary/40 transition-all shadow-sm"
+                                value={searchTerm}
+                                onChange={(event) => setSearchTerm(event.target.value)}
+                            />
+                        </div>
+
+                        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button
+                                    className="gap-2 text-[13px] font-bold px-6 h-11 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
+                                    style={{
+                                        background: 'var(--primary)',
+                                        color: 'white',
+                                    }}
+                                >
+                                    <Plus size={18} strokeWidth={3} />
+                                    Nueva Compañía
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl bg-card">
+                                <DialogHeader className="pb-2">
+                                    <DialogTitle className="text-xl font-black tracking-tight">
+                                        Agregar Nueva Compañía
+                                    </DialogTitle>
+                                </DialogHeader>
+                                <div className="flex flex-col gap-5 pt-1">
+                                    <div className="space-y-1">
+                                        <Input
+                                            placeholder="Ej: Company Test"
+                                            value={newCompanyName}
+                                            onChange={(e) => setNewCompanyName(e.target.value)}
+                                            className="h-12 text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all"
+                                            onKeyDown={(e) => e.key === 'Enter' && handleAddCompany()}
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="flex justify-end gap-3 mt-2">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={() => setIsDialogOpen(false)}
+                                            className="text-xs font-bold h-11 px-6 rounded-xl hover:bg-muted"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            onClick={handleAddCompany}
+                                            className="text-xs font-black h-11 px-8 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+                                        >
+                                            Guardar Compañía
+                                        </Button>
+                                    </div>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     </div>
                 </div>
             </div>
@@ -284,7 +379,7 @@ export default function Dashboard() {
                         </div>
 
                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/30 px-3 py-1.5 rounded-lg border border-border/40">
-                            Visualizando {filteredCompanies.length} de {totalCompanies} registros
+                            Visualizando {paginatedCompanies.length > 0 ? (currentPage - 1) * ITEMS_PER_PAGE + 1 : 0}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredCompanies.length)} de {filteredCompanies.length} resultados
                         </p>
                     </div>
 
@@ -317,7 +412,7 @@ export default function Dashboard() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody className="bg-card">
-                                        {filteredCompanies.map((company, index) => {
+                                        {paginatedCompanies.map((company, index) => {
                                             const avatarColor = getAvatarColor(company.name);
                                             const initials = getInitials(company.name);
                                             const progressMap = { onboarding: 15, design: 35, integration: 60, QA: 80, launched: 100 };
@@ -376,32 +471,16 @@ export default function Dashboard() {
                                                         }) : '—'}
                                                     </TableCell>
                                                     <TableCell className="py-5 text-center">
-                                                        <div className="flex items-center justify-center gap-2">
+                                                        <div className="flex items-center justify-center">
                                                             <Button
                                                                 variant="ghost"
                                                                 size="sm"
-                                                                className="h-8 px-2.5 gap-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors text-[11px] font-black uppercase tracking-wider"
+                                                                className="h-9 px-4 gap-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all text-[11px] font-black uppercase tracking-wider hover:scale-105 active:scale-95"
                                                                 onClick={() => navigate(`/dashboard/${company.id}`)}
                                                             >
-                                                                <Eye size={15} />
-                                                                <span>Ver</span>
+                                                                <Eye size={16} />
+                                                                <span>Ver Detalles</span>
                                                             </Button>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:bg-muted transition-colors">
-                                                                        <MoreHorizontal className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end" className="w-[180px] rounded-xl p-1.5 shadow-xl border-border/40">
-                                                                    <DropdownMenuItem onClick={() => navigate('/kanban')} className="cursor-pointer text-xs font-bold py-2.5 rounded-lg gap-2.5">
-                                                                        <Kanban size={14} className="text-primary" /> Ver en Tablero
-                                                                    </DropdownMenuItem>
-                                                                    <div className="h-px bg-border/40 my-1" />
-                                                                    <DropdownMenuItem className="cursor-pointer text-xs font-bold py-2.5 rounded-lg gap-2.5 text-destructive focus:bg-destructive/5 focus:text-destructive">
-                                                                        <Archive size={14} /> Archivar Proyecto
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
                                                         </div>
                                                     </TableCell>
                                                 </TableRow>
@@ -410,6 +489,64 @@ export default function Dashboard() {
                                     </TableBody>
                                 </Table>
                             </div>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between px-8 py-4 bg-card border-t border-border/60">
+                                    <div className="flex items-center gap-2">
+                                        <p className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-widest">
+                                            Página <span className="text-foreground">{currentPage}</span> de <span className="text-foreground">{totalPages}</span>
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                            disabled={currentPage === 1}
+                                            className="h-8 w-8 p-0 rounded-xl border-border/60 hover:bg-muted transition-all active:scale-95 disabled:opacity-30"
+                                        >
+                                            <ChevronLeft size={16} />
+                                        </Button>
+
+                                        <div className="flex items-center gap-1 mx-1">
+                                            {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                .filter(page => {
+                                                    // Mostrar siempre primera, última y las cercanas a la actual
+                                                    if (totalPages <= 7) return true;
+                                                    return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+                                                })
+                                                .map((page, index, array) => {
+                                                    const showDots = index > 0 && page - array[index - 1] > 1;
+                                                    return (
+                                                        <div key={page} className="flex items-center gap-1">
+                                                            {showDots && <span className="text-muted-foreground/40 text-[10px] px-1">...</span>}
+                                                            <button
+                                                                onClick={() => setCurrentPage(page)}
+                                                                className={`h-8 min-w-[32px] px-2 rounded-xl text-[11px] font-black transition-all active:scale-95 ${currentPage === page
+                                                                    ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20 scale-105'
+                                                                    : 'hover:bg-muted text-muted-foreground'
+                                                                    }`}
+                                                            >
+                                                                {page}
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                        </div>
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                            disabled={currentPage === totalPages}
+                                            className="h-8 w-8 p-0 rounded-xl border-border/60 hover:bg-muted transition-all active:scale-95 disabled:opacity-30"
+                                        >
+                                            <ChevronRight size={16} />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
                             {filteredCompanies.length === 0 && (
                                 <div className="flex flex-col items-center justify-center py-20 text-center animate-kanban-fade-in bg-muted/5">
                                     <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/20 text-muted-foreground mb-4">
