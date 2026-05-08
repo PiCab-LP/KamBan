@@ -1,8 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { 
+    DropdownMenu, 
+    DropdownMenuContent, 
+    DropdownMenuItem, 
+    DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/lib/supabaseClient';
+import { ChevronDown, Search, Building, Globe, Check } from 'lucide-react';
 
 const PREDEFINED_COLORS = [
     { label: 'Amarillo', value: '#FEF3C7' }, // amber-100
@@ -20,6 +28,15 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
     
     const [companies, setCompanies] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [companySearch, setCompanySearch] = useState('');
+
+    const selectedCompany = useMemo(() => 
+        companies.find(c => c.id === companyId), 
+    [companies, companyId]);
+
+    const filteredCompanies = useMemo(() => 
+        companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase())),
+    [companies, companySearch]);
 
     useEffect(() => {
         // Fetch companies for dropdown
@@ -89,16 +106,79 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
                         <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
                             Asignar a Compañía
                         </label>
-                        <select 
-                            value={companyId}
-                            onChange={(e) => setCompanyId(e.target.value)}
-                            className="w-full h-11 px-3 text-sm rounded-2xl border border-border/60 bg-muted/30 focus:bg-background focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none"
-                        >
-                            <option value="">Global (Sin asignar)</option>
-                            {companies.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
+                        
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button 
+                                    variant="outline" 
+                                    className="w-full h-11 px-4 justify-between text-sm rounded-2xl border-border/60 bg-muted/30 hover:bg-background transition-all font-medium"
+                                >
+                                    <div className="flex items-center gap-2 truncate">
+                                        {selectedCompany ? (
+                                            <>
+                                                <Building size={16} className="text-primary/70 shrink-0" />
+                                                <span className="truncate">{selectedCompany.name}</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Globe size={16} className="text-muted-foreground/50 shrink-0" />
+                                                <span className="text-muted-foreground/70">Global (Sin asignar)</span>
+                                            </>
+                                        )}
+                                    </div>
+                                    <ChevronDown size={16} className="text-muted-foreground/40 shrink-0" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent 
+                                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[300px] p-2 rounded-2xl border-border/40 shadow-2xl animate-in fade-in-0 zoom-in-95"
+                                align="start"
+                            >
+                                <div className="relative mb-2 px-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={14} />
+                                    <Input 
+                                        placeholder="Buscar compañía..." 
+                                        value={companySearch}
+                                        onChange={(e) => setCompanySearch(e.target.value)}
+                                        className="h-9 pl-8 text-xs rounded-xl border-none bg-muted/50 focus:bg-muted"
+                                    />
+                                </div>
+                                
+                                <div className="max-h-[200px] overflow-y-auto custom-scrollbar space-y-0.5">
+                                    <DropdownMenuItem 
+                                        onClick={() => setCompanyId('')}
+                                        className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-primary/5"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <Globe size={14} className={!companyId ? 'text-primary' : 'text-muted-foreground/40'} />
+                                            <span className={!companyId ? 'font-bold text-primary' : 'text-foreground/70'}>Global (Sin asignar)</span>
+                                        </div>
+                                        {!companyId && <Check size={14} className="text-primary" />}
+                                    </DropdownMenuItem>
+                                    
+                                    {filteredCompanies.map(c => (
+                                        <DropdownMenuItem 
+                                            key={c.id} 
+                                            onClick={() => setCompanyId(c.id)}
+                                            className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-primary/5"
+                                        >
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Building size={14} className={companyId === c.id ? 'text-primary' : 'text-muted-foreground/40'} />
+                                                <span className={`truncate ${companyId === c.id ? 'font-bold text-primary' : 'text-foreground/70'}`}>
+                                                    {c.name}
+                                                </span>
+                                            </div>
+                                            {companyId === c.id && <Check size={14} className="text-primary" />}
+                                        </DropdownMenuItem>
+                                    ))}
+                                    
+                                    {filteredCompanies.length === 0 && companySearch && (
+                                        <div className="py-4 text-center text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
+                                            No hay resultados
+                                        </div>
+                                    )}
+                                </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </div>
 
                     <div className="flex items-center justify-between">

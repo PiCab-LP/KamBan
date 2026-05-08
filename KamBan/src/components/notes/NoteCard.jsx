@@ -69,11 +69,7 @@ export function NoteCard({ note, onEdit, onDelete, onTogglePin }) {
                         <Edit2 size={16} />
                     </button>
                     <button 
-                        onClick={() => {
-                            if(window.confirm('¿Estás seguro de eliminar esta nota?')) {
-                                onDelete(note.id);
-                            }
-                        }}
+                        onClick={() => onDelete(note.id)}
                         className="p-2 rounded-xl opacity-60 hover:opacity-100 hover:bg-destructive/20 hover:text-destructive transition-colors"
                         title="Eliminar"
                     >

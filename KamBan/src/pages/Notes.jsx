@@ -4,12 +4,14 @@ import { NoteCard } from '@/components/notes/NoteCard';
 import { NoteForm } from '@/components/notes/NoteForm';
 import { Button } from '@/components/ui/button';
 import { Edit3, Plus } from 'lucide-react';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 export default function Notes() {
     const { notes, loading, createNote, updateNote, deleteNote, togglePin } = useNotes();
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingNote, setEditingNote] = useState(null);
+    const [noteToDelete, setNoteToDelete] = useState(null);
 
     const handleOpenCreate = () => {
         setEditingNote(null);
@@ -26,6 +28,13 @@ export default function Notes() {
             await updateNote(editingNote.id, noteData);
         } else {
             await createNote(noteData);
+        }
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (noteToDelete) {
+            await deleteNote(noteToDelete);
+            setNoteToDelete(null);
         }
     };
 
@@ -65,7 +74,7 @@ export default function Notes() {
                             key={note.id}
                             note={note}
                             onEdit={handleOpenEdit}
-                            onDelete={deleteNote}
+                            onDelete={(id) => setNoteToDelete(id)}
                             onTogglePin={togglePin}
                         />
                     ))}
@@ -88,6 +97,14 @@ export default function Notes() {
                 onClose={() => setIsFormOpen(false)}
                 note={editingNote}
                 onSave={handleSaveNote}
+            />
+
+            <ConfirmDeleteModal 
+                isOpen={!!noteToDelete}
+                onClose={() => setNoteToDelete(null)}
+                onConfirm={handleDeleteConfirm}
+                title="¿Eliminar nota?"
+                description="Esta nota del equipo se borrará permanentemente. Esta acción no se puede revertir."
             />
         </div>
     );
