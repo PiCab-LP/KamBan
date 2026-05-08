@@ -15,7 +15,9 @@ import {
   useSensors, 
   useSensor, 
   PointerSensor,
-  KeyboardSensor
+  KeyboardSensor,
+  pointerWithin,
+  rectIntersection
 } from '@dnd-kit/core';
 import { 
   SortableContext, 
@@ -219,6 +221,20 @@ export default function Kanban() {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Estrategia de colision personalizada para mejorar la deteccion entre columnas
+  const collisionDetectionStrategy = (args) => {
+    // 1. Priorizar donde esta el puntero (mas intuitivo para el usuario)
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+
+    // 2. Si no hay puntero, usar interseccion de rectangulos (solapamiento de la tarjeta)
+    const rectCollisions = rectIntersection(args);
+    if (rectCollisions.length > 0) return rectCollisions;
+
+    // 3. Fallback a esquinas mas cercanas para el efecto "magnetico" entre gaps
+    return closestCorners(args);
+  };
 
   const columns = ['onboarding', 'design', 'integration', 'QA', 'launched'];
 
@@ -426,7 +442,7 @@ export default function Kanban() {
       {/* Kanban Board */}
       <DndContext 
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetectionStrategy}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
