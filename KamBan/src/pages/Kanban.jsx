@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GripVertical, Plus, CheckSquare } from 'lucide-react';
+import { GripVertical, Plus, CheckSquare, Trash2 } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -114,10 +114,10 @@ function DroppableColumn({ id, children, count }) {
       </div>
 
       {/* Cards Container */}
-      <div className="flex-1 px-3 pb-4 space-y-3 overflow-y-auto max-h-[calc(80vh-100px)] custom-scrollbar">
+      <div className="flex-1 px-3 pt-2 pb-4 space-y-3 overflow-y-auto max-h-[calc(80vh-100px)] custom-scrollbar">
         {children}
         {count === 0 && (
-          <div className="flex flex-col items-center justify-center py-12 px-4 text-center border-2 border-dashed border-muted-foreground/10 rounded-2xl animate-pulse">
+          <div className="flex flex-col items-center justify-center h-[118px] px-4 text-center border-2 border-dashed border-muted-foreground/10 rounded-xl animate-pulse bg-card/30">
             <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
               Vacio
             </p>
@@ -129,8 +129,7 @@ function DroppableColumn({ id, children, count }) {
 }
 
 // 2. Shared Card UI
-function KanbanCardUI({ task, isOverlay, dragHandleProps, onEdit }) {
-  // If the task belongs to a company, we might have company data
+const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit, onDelete }) => {
   const companyName = task.companies ? task.companies.name : 'Global';
   const avatarColor = getAvatarColor(companyName);
   const initials = getInitials(companyName);
@@ -139,7 +138,7 @@ function KanbanCardUI({ task, isOverlay, dragHandleProps, onEdit }) {
   return (
     <Card
       className={`
-        border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full
+        border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full group
         ${isOverlay ? 'ring-2 ring-primary/40 shadow-2xl opacity-95' : 'hover:border-primary/30 hover:shadow-lg hover:shadow-black/5'}
       `}
     >
@@ -153,23 +152,34 @@ function KanbanCardUI({ task, isOverlay, dragHandleProps, onEdit }) {
         </div>
 
         {/* Card Body */}
-        <div
-          className="flex-1 flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none"
-          onClick={() => onEdit && onEdit(task)}
+        <div 
+          className="flex-1 flex items-center gap-3 px-3 py-2.5 cursor-pointer select-none"
+          onClick={() => onEdit(task)}
         >
           <div
-            className="flex items-center justify-center shrink-0 w-7 h-7 rounded-lg text-white text-[9px] font-black shadow-sm"
+            className="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg text-white text-[10px] font-black shadow-sm"
             style={{ backgroundColor: avatarColor }}
           >
             {initials}
           </div>
-          <div className="space-y-0 text-left">
-            <p className="text-[11px] font-bold text-foreground leading-tight line-clamp-1">
-              {task.title}
-            </p>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <h4 className="text-xs font-black text-foreground leading-snug line-clamp-2">
+                {task.title}
+              </h4>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(task.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 p-1 -mr-1 -mt-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+              >
+                <Trash2 size={14} strokeWidth={2.5} />
+              </button>
+            </div>
             <div className="flex items-center gap-1 opacity-60">
-              <div className={`w-1 h-1 rounded-full ${isLaunched ? 'bg-status-done' : 'bg-primary/40'}`} />
-              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">
+              <div className={`w-1.5 h-1.5 rounded-full ${isLaunched ? 'bg-status-done' : 'bg-primary/40'}`} />
+              <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter truncate">
                 {companyName}
               </p>
             </div>
@@ -181,7 +191,7 @@ function KanbanCardUI({ task, isOverlay, dragHandleProps, onEdit }) {
 }
 
 // 3. Sortable Wrapper
-function SortableCard({ task, onEdit }) {
+function SortableCard({ task, onEdit, onDelete }) {
   const {
     attributes,
     listeners,
@@ -199,9 +209,10 @@ function SortableCard({ task, onEdit }) {
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      <KanbanCardUI
+      <TaskCard
         task={task}
         onEdit={onEdit}
+        onDelete={onDelete}
         dragHandleProps={{ ...attributes, ...listeners }}
         isOverlay={false}
       />
@@ -227,21 +238,13 @@ export default function Kanban() {
     })
   );
 
-  // Estrategia de colision personalizada para mejorar la deteccion entre columnas
   const collisionDetectionStrategy = (args) => {
-    // 1. Priorizar donde esta el puntero (mas intuitivo para el usuario)
     const pointerCollisions = pointerWithin(args);
     if (pointerCollisions.length > 0) return pointerCollisions;
-
-    // 2. Si no hay puntero, usar interseccion de rectangulos (solapamiento de la tarjeta)
     const rectCollisions = rectIntersection(args);
     if (rectCollisions.length > 0) return rectCollisions;
-
-    // 3. Fallback a esquinas mas cercanas para el efecto "magnetico" entre gaps
     return closestCorners(args);
   };
-
-  const columns = ['todo', 'in_progress', 'blocked', 'done'];
 
   async function fetchTasks() {
     const { data } = await supabase
@@ -254,6 +257,21 @@ export default function Kanban() {
   useEffect(() => {
     fetchTasks();
   }, []);
+
+  const handleDeleteTask = async (taskId) => {
+    const { error } = await supabase
+      .from('personal_tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (!error) {
+      showToast('Pendiente eliminado', 'info');
+      fetchTasks();
+    } else {
+      console.error("Error al borrar tarea:", error);
+      showToast('Error al eliminar', 'error');
+    }
+  };
 
   const handleDragStart = (event) => {
     setActiveId(event.active.id);
@@ -421,6 +439,7 @@ export default function Kanban() {
                       setEditingTask(t);
                       setIsModalOpen(true);
                   }}
+                  onDelete={handleDeleteTask}
                 />
               ))}
             </SortableContext>
@@ -438,7 +457,10 @@ export default function Kanban() {
       >
         {activeTask ? (
           <div className="w-[280px]">
-            <KanbanCardUI task={activeTask} isOverlay={true} />
+            <TaskCard task={activeTask} isOverlay={true} onDelete={handleDeleteTask} onEdit={(t) => {
+                setEditingTask(t);
+                setIsModalOpen(true);
+            }} />
           </div>
         ) : null}
       </DragOverlay>,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
     DropdownMenu, 
     DropdownMenuContent, 
@@ -86,6 +86,9 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
                     <DialogTitle className="text-xl font-black tracking-tight">
                         {note ? 'Editar Nota' : 'Nueva Nota'}
                     </DialogTitle>
+                    <DialogDescription className="text-[11px] text-muted-foreground/60 font-medium">
+                        Escribe tus pensamientos o información relevante para recordar luego.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-5 pt-2">

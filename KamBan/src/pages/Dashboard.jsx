@@ -369,6 +369,9 @@ export default function Dashboard() {
                                     <DialogTitle className="text-xl font-black tracking-tight">
                                         Agregar Nueva Compañía
                                     </DialogTitle>
+                                    <DialogDescription className="text-xs text-muted-foreground/60">
+                                        Ingresa el nombre de la empresa para registrarla en el sistema.
+                                    </DialogDescription>
                                 </DialogHeader>
                                 <div className="flex flex-col gap-5 pt-1">
                                     <div className="space-y-1">

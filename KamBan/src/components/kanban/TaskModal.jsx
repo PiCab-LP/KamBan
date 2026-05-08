@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { 
     DropdownMenu, 
     DropdownMenuContent, 
@@ -75,6 +75,9 @@ export function TaskModal({ isOpen, onClose, task, onSave }) {
                     <DialogTitle className="text-xl font-black tracking-tight">
                         {task ? 'Editar Pendiente' : 'Nuevo Pendiente'}
                     </DialogTitle>
+                    <DialogDescription className="text-[11px] text-muted-foreground/60 font-medium">
+                        Completa los campos para {task ? 'actualizar' : 'crear'} tu tarea personal.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex flex-col gap-5 pt-2">
