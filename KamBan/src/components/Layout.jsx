@@ -30,7 +30,9 @@ export default function Layout() {
         <nav className="flex-1 px-4 py-6">
           <div className="space-y-1.5">
             {navItems.map((item) => {
-              const isActive = location.pathname === item.to;
+              const isActive = item.to === '/' 
+                ? (location.pathname === '/' || location.pathname.startsWith('/dashboard'))
+                : location.pathname === item.to;
               const Icon = item.icon;
               return (
                 <Link
