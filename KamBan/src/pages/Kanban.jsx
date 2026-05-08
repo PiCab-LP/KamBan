@@ -136,37 +136,37 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
   return (
     <Card
       className={`
-        border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-2xl w-full
+        border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full
         ${isOverlay ? 'ring-2 ring-primary/40 shadow-2xl opacity-95' : 'hover:border-primary/30 hover:shadow-lg hover:shadow-black/5'}
       `}
     >
-      <div className="flex items-stretch min-h-[64px]">
+      <div className="flex items-stretch min-h-[48px]">
         {/* Drag Handle */}
         <div
           {...dragHandleProps}
-          className={`flex items-center justify-center px-2 text-muted-foreground/20 bg-muted/5 border-r border-border/30 ${isOverlay ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-colors duration-200'}`}
+          className={`flex items-center justify-center px-1.5 text-muted-foreground/20 bg-muted/5 border-r border-border/30 ${isOverlay ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-colors duration-200'}`}
         >
-          <GripVertical size={14} />
+          <GripVertical size={12} />
         </div>
 
         {/* Card Body */}
         <div
-          className="flex-1 flex items-center gap-3 px-4 py-3 cursor-pointer select-none"
+          className="flex-1 flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none"
           onClick={() => onEdit && onEdit(company)}
         >
           <div
-            className="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg text-white text-[10px] font-black shadow-sm"
+            className="flex items-center justify-center shrink-0 w-7 h-7 rounded-lg text-white text-[9px] font-black shadow-sm"
             style={{ backgroundColor: avatarColor }}
           >
             {initials}
           </div>
-          <div className="space-y-0.5">
-            <p className="text-xs font-bold text-foreground leading-tight line-clamp-1">
+          <div className="space-y-0">
+            <p className="text-[11px] font-bold text-foreground leading-tight line-clamp-1">
               {company.name}
             </p>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 opacity-60">
               <div className="w-1 h-1 rounded-full bg-primary/40" />
-              <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter">Detalles</p>
+              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Detalles</p>
             </div>
           </div>
         </div>

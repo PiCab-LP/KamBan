@@ -131,37 +131,35 @@ function StatusBadge({ status }) {
 
 function StatCard({ icon: Icon, label, value, delay = 0, trend, trendLabel, color, sparkData }) {
     return (
-        <div className="animate-kanban-slide-up h-full w-full" style={{ animationDelay: `${delay}ms` }}>
-            <Card className="group border-border/40 hover:border-primary/30 transition-all duration-300 bg-card overflow-hidden h-full shadow-sm hover:shadow-md">
-                <CardContent className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                        <div
-                            className="flex items-center justify-center w-10 h-10 rounded-xl transition-transform group-hover:scale-110 duration-300"
-                            style={{
-                                backgroundColor: color ? `color-mix(in oklch, ${color} 10%, transparent)` : 'var(--accent)',
-                            }}
-                        >
-                            <Icon size={20} strokeWidth={2} style={{ color: color || 'var(--primary)' }} />
-                        </div>
-                        <div className="pt-1">
-                            {sparkData && <Sparkline data={sparkData} color={color || 'var(--primary)'} width={64} height={24} />}
-                        </div>
+        <div className="animate-kanban-slide-up w-full" style={{ animationDelay: `${delay}ms` }}>
+            <Card className="group border-border/40 hover:border-primary/30 transition-all duration-300 bg-card overflow-hidden shadow-sm hover:shadow-md py-0 gap-0">
+                <CardContent className="p-6 flex items-center gap-5 min-h-[100px]">
+                    <div
+                        className="flex items-center justify-center w-12 h-12 rounded-2xl transition-transform group-hover:scale-110 duration-300 shrink-0"
+                        style={{
+                            backgroundColor: color ? `color-mix(in oklch, ${color} 12%, transparent)` : 'var(--accent)',
+                        }}
+                    >
+                        <Icon size={24} strokeWidth={2.5} style={{ color: color || 'var(--primary)' }} />
                     </div>
-                    <div className="space-y-1">
-                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">{label}</p>
-                        <div className="flex items-baseline gap-3">
-                            <p className="text-3xl font-black text-foreground tracking-tight">{value}</p>
+                    
+                    <div className="flex-1 flex flex-col items-start text-left min-w-0">
+                        <p className="text-[11px] font-black text-muted-foreground/50 uppercase tracking-[0.15em] truncate w-full mb-1">{label}</p>
+                        <div className="flex items-baseline gap-2.5">
+                            <p className="text-3xl font-black text-foreground tracking-tight leading-none">{value}</p>
                             {trend && (
-                                <div
-                                    className={`flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full ${trend > 0 ? 'bg-status-launched-bg text-status-launched' : 'bg-destructive/10 text-destructive'
-                                        }`}
-                                >
-                                    <ArrowUpRight size={10} className={trend < 0 ? 'rotate-90' : ''} />
+                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-lg ${trend > 0 ? 'bg-status-launched-bg text-status-launched' : 'bg-destructive/10 text-destructive'}`}>
                                     {trendLabel}
-                                </div>
+                                </span>
                             )}
                         </div>
                     </div>
+
+                    {sparkData && (
+                        <div className="shrink-0 opacity-20 group-hover:opacity-80 transition-opacity duration-300 hidden xl:block">
+                            <Sparkline data={sparkData} color={color || 'var(--primary)'} width={60} height={20} />
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
