@@ -432,7 +432,7 @@ export default function Dashboard() {
             {/* ── Summary stats ───────────────────── */}
             <section className="animate-kanban-fade-in space-y-6" style={{ animationDelay: '200ms' }}>
                 <div className="border-b border-border/40 pb-4">
-                    <h2 className="text-xl font-black text-foreground tracking-tight">Resumen en vivo de Compañías</h2>
+                    <h2 className="text-xl font-black text-foreground tracking-tight">Pipeline de Compañías</h2>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

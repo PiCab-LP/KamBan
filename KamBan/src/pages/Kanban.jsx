@@ -132,19 +132,23 @@ function DroppableColumn({ id, children, count }) {
 function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
   const avatarColor = getAvatarColor(company.name);
   const initials = getInitials(company.name);
+  const isLaunched = company.status === 'launched';
 
   return (
     <Card
       className={`
         border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full
         ${isOverlay ? 'ring-2 ring-primary/40 shadow-2xl opacity-95' : 'hover:border-primary/30 hover:shadow-lg hover:shadow-black/5'}
+        ${isOverlay && isLaunched ? '!ring-destructive/50 !border-destructive/50 animate-shake' : ''}
       `}
     >
       <div className="flex items-stretch min-h-[48px]">
         {/* Drag Handle */}
         <div
           {...dragHandleProps}
-          className={`flex items-center justify-center px-1.5 text-muted-foreground/20 bg-muted/5 border-r border-border/30 ${isOverlay ? 'cursor-grabbing' : 'cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/60 transition-colors duration-200'}`}
+          className={`flex items-center justify-center px-1.5 text-muted-foreground/45 bg-muted/5 border-r border-border/30 
+            ${isLaunched ? 'cursor-not-allowed group-hover:text-destructive/40' : 'cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70'} 
+            transition-colors duration-200`}
         >
           <GripVertical size={12} />
         </div>
@@ -165,8 +169,10 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
               {company.name}
             </p>
             <div className="flex items-center gap-1 opacity-60">
-              <div className="w-1 h-1 rounded-full bg-primary/40" />
-              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">Detalles</p>
+              <div className={`w-1 h-1 rounded-full ${isLaunched ? 'bg-status-launched' : 'bg-primary/40'}`} />
+              <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">
+                {isLaunched ? 'Lanzada (Bloqueado)' : 'Detalles'}
+              </p>
             </div>
           </div>
         </div>
