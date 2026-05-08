@@ -381,7 +381,7 @@ export default function Dashboard() {
                                                                 variant="ghost"
                                                                 size="sm"
                                                                 className="h-8 px-2.5 gap-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors text-[11px] font-black uppercase tracking-wider"
-                                                                onClick={() => navigate('/kanban')}
+                                                                onClick={() => navigate(`/dashboard/${company.id}`)}
                                                             >
                                                                 <Eye size={15} />
                                                                 <span>Ver</span>
