@@ -48,16 +48,14 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 
     /* Kanban status color tokens */
-    --color-status-onboarding: var(--status-onboarding);
-    --color-status-onboarding-bg: var(--status-onboarding-bg);
-    --color-status-design: var(--status-design);
-    --color-status-design-bg: var(--status-design-bg);
-    --color-status-integration: var(--status-integration);
-    --color-status-integration-bg: var(--status-integration-bg);
-    --color-status-qa: var(--status-qa);
-    --color-status-qa-bg: var(--status-qa-bg);
-    --color-status-launched: var(--status-launched);
-    --color-status-launched-bg: var(--status-launched-bg);
+    --color-status-nuevo: var(--status-nuevo);
+    --color-status-nuevo-bg: var(--status-nuevo-bg);
+    --color-status-in_progress: var(--status-in_progress);
+    --color-status-in_progress-bg: var(--status-in_progress-bg);
+    --color-status-blocked: var(--status-blocked);
+    --color-status-blocked-bg: var(--status-blocked-bg);
+    --color-status-done: var(--status-done);
+    --color-status-done-bg: var(--status-done-bg);
 }
 
 /* ──────────────────────────────────────
@@ -109,17 +107,15 @@
     --sidebar-ring: oklch(0.55 0.18 260);
 
     /* Status colors */
-    --status-onboarding: oklch(0.55 0.18 260);
-    --status-design: oklch(0.55 0.18 300);
-    --status-integration: oklch(0.7 0.16 60);
-    --status-qa: oklch(0.65 0.22 340);
-    --status-launched: oklch(0.55 0.16 150);
+    --status-nuevo: oklch(0.6 0.22 300);
+    --status-in_progress: oklch(0.55 0.18 260);
+    --status-blocked: oklch(0.58 0.22 25);
+    --status-done: oklch(0.55 0.16 150);
 
-    --status-onboarding-bg: oklch(0.95 0.04 260);
-    --status-design-bg: oklch(0.95 0.04 300);
-    --status-integration-bg: oklch(0.95 0.04 60);
-    --status-qa-bg: oklch(0.96 0.04 340);
-    --status-launched-bg: oklch(0.95 0.04 150);
+    --status-nuevo-bg: oklch(0.97 0.01 300);
+    --status-in_progress-bg: oklch(0.95 0.04 260);
+    --status-blocked-bg: oklch(0.97 0.02 25);
+    --status-done-bg: oklch(0.95 0.04 150);
 }
 
 .dark {
@@ -155,17 +151,15 @@
     --sidebar-border: oklch(0.22 0.015 260);
     --sidebar-ring: oklch(0.6 0.18 260);
 
-    --status-onboarding: oklch(0.65 0.18 260);
-    --status-design: oklch(0.65 0.18 300);
-    --status-integration: oklch(0.72 0.16 60);
-    --status-qa: oklch(0.7 0.2 340);
-    --status-launched: oklch(0.6 0.16 150);
+    --status-nuevo: oklch(0.7 0.18 300);
+    --status-in_progress: oklch(0.65 0.18 260);
+    --status-blocked: oklch(0.65 0.2 25);
+    --status-done: oklch(0.6 0.16 150);
 
-    --status-onboarding-bg: oklch(0.22 0.04 260);
-    --status-design-bg: oklch(0.22 0.04 300);
-    --status-integration-bg: oklch(0.22 0.04 60);
-    --status-qa-bg: oklch(0.25 0.06 340);
-    --status-launched-bg: oklch(0.22 0.04 150);
+    --status-nuevo-bg: oklch(0.24 0.04 300);
+    --status-in_progress-bg: oklch(0.22 0.04 260);
+    --status-blocked-bg: oklch(0.22 0.04 25);
+    --status-done-bg: oklch(0.22 0.04 150);
 }
 
 /* ──────────────────────────────────────

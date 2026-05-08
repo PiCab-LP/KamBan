@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { GripVertical, Plus } from 'lucide-react';
+import { GripVertical, Plus, CheckSquare } from 'lucide-react';
 import {
   DndContext,
   closestCenter,
@@ -26,31 +26,29 @@ import {
   sortableKeyboardCoordinates
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { CompanyDetailsModal } from './CompanyDetailsModal';
+import { useToast } from '../context/ToastContext';
+import { TaskModal } from '../components/kanban/TaskModal';
 import '../App.css';
 
 const STATUS_COLORS = {
-  onboarding: 'var(--status-onboarding)',
-  design: 'var(--status-design)',
-  integration: 'var(--status-integration)',
-  QA: 'var(--status-qa)',
-  launched: 'var(--status-launched)',
+  nuevo: 'var(--status-nuevo)',
+  in_progress: 'var(--status-in_progress)',
+  blocked: 'var(--status-blocked)',
+  done: 'var(--status-done)',
 };
 
 const STATUS_BG = {
-  onboarding: 'var(--status-onboarding-bg)',
-  design: 'var(--status-design-bg)',
-  integration: 'var(--status-integration-bg)',
-  QA: 'var(--status-qa-bg)',
-  launched: 'var(--status-launched-bg)',
+  nuevo: 'var(--status-nuevo-bg)',
+  in_progress: 'var(--status-in_progress-bg)',
+  blocked: 'var(--status-blocked-bg)',
+  done: 'var(--status-done-bg)',
 };
 
 const COLUMN_CONFIG = {
-  onboarding: { title: 'Onboarding', description: 'Registro inicial' },
-  design: { title: 'Design', description: 'Fase de diseno' },
-  integration: { title: 'Integration', description: 'Desarrollo activo' },
-  QA: { title: 'QA', description: 'Control de calidad' },
-  launched: { title: 'Launched', description: 'En produccion' },
+  nuevo: { title: 'Nuevo', description: 'Tareas por iniciar' },
+  in_progress: { title: 'En Proceso', description: 'Desarrollo activo' },
+  blocked: { title: 'Bloqueado', description: 'Requiere atención' },
+  done: { title: 'Completado', description: 'Finalizado' },
 };
 
 const AVATAR_COLORS = [
@@ -78,6 +76,9 @@ function getAvatarColor(name) {
 function DroppableColumn({ id, children, count }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const config = COLUMN_CONFIG[id];
+  if (!config) return null; // Seguridad contra estados obsoletos
+  
+  const { title, description } = config;
 
   return (
     <div
@@ -94,10 +95,10 @@ function DroppableColumn({ id, children, count }) {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-sm font-black text-foreground tracking-tight uppercase">
-              {config.title}
+              {title}
             </h2>
             <p className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest mt-0.5">
-              {config.description}
+              {description}
             </p>
           </div>
           <span
@@ -128,26 +129,25 @@ function DroppableColumn({ id, children, count }) {
 }
 
 // 2. Shared Card UI
-function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
-  const avatarColor = getAvatarColor(company.name);
-  const initials = getInitials(company.name);
-  const isLaunched = company.status === 'launched';
+function KanbanCardUI({ task, isOverlay, dragHandleProps, onEdit }) {
+  // If the task belongs to a company, we might have company data
+  const companyName = task.companies ? task.companies.name : 'Global';
+  const avatarColor = getAvatarColor(companyName);
+  const initials = getInitials(companyName);
+  const isLaunched = task.status === 'done';
 
   return (
     <Card
       className={`
         border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full
         ${isOverlay ? 'ring-2 ring-primary/40 shadow-2xl opacity-95' : 'hover:border-primary/30 hover:shadow-lg hover:shadow-black/5'}
-        ${isOverlay && isLaunched ? '!ring-destructive/50 !border-destructive/50 animate-shake' : ''}
       `}
     >
       <div className="flex items-stretch min-h-[48px]">
         {/* Drag Handle */}
         <div
           {...dragHandleProps}
-          className={`flex items-center justify-center px-1.5 text-muted-foreground/45 bg-muted/5 border-r border-border/30 
-            ${isLaunched ? 'cursor-not-allowed group-hover:text-destructive/40' : 'cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70'} 
-            transition-colors duration-200`}
+          className="flex items-center justify-center px-1.5 text-muted-foreground/45 bg-muted/5 border-r border-border/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70 transition-colors duration-200"
         >
           <GripVertical size={12} />
         </div>
@@ -155,7 +155,7 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
         {/* Card Body */}
         <div
           className="flex-1 flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none"
-          onClick={() => onEdit && onEdit(company)}
+          onClick={() => onEdit && onEdit(task)}
         >
           <div
             className="flex items-center justify-center shrink-0 w-7 h-7 rounded-lg text-white text-[9px] font-black shadow-sm"
@@ -163,14 +163,14 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
           >
             {initials}
           </div>
-          <div className="space-y-0">
+          <div className="space-y-0 text-left">
             <p className="text-[11px] font-bold text-foreground leading-tight line-clamp-1">
-              {company.name}
+              {task.title}
             </p>
             <div className="flex items-center gap-1 opacity-60">
-              <div className={`w-1 h-1 rounded-full ${isLaunched ? 'bg-status-launched' : 'bg-primary/40'}`} />
+              <div className={`w-1 h-1 rounded-full ${isLaunched ? 'bg-status-done' : 'bg-primary/40'}`} />
               <p className="text-[8px] font-bold text-muted-foreground uppercase tracking-tighter">
-                {isLaunched ? 'Lanzada (Bloqueado)' : 'Detalles'}
+                {companyName}
               </p>
             </div>
           </div>
@@ -181,7 +181,7 @@ function KanbanCardUI({ company, isOverlay, dragHandleProps, onEdit }) {
 }
 
 // 3. Sortable Wrapper
-function SortableCard({ company, onEdit }) {
+function SortableCard({ task, onEdit }) {
   const {
     attributes,
     listeners,
@@ -189,7 +189,7 @@ function SortableCard({ company, onEdit }) {
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: company.id });
+  } = useSortable({ id: task.id });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -200,7 +200,7 @@ function SortableCard({ company, onEdit }) {
   return (
     <div ref={setNodeRef} style={style} className="group">
       <KanbanCardUI
-        company={company}
+        task={task}
         onEdit={onEdit}
         dragHandleProps={{ ...attributes, ...listeners }}
         isOverlay={false}
@@ -210,8 +210,10 @@ function SortableCard({ company, onEdit }) {
 }
 
 export default function Kanban() {
-  const [companies, setCompanies] = useState([]);
-  const [editingCompany, setEditingCompany] = useState(null);
+  const { showToast } = useToast();
+  const [tasks, setTasks] = useState([]);
+  const [editingTask, setEditingTask] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeId, setActiveId] = useState(null);
 
   const sensors = useSensors(
@@ -239,18 +241,18 @@ export default function Kanban() {
     return closestCorners(args);
   };
 
-  const columns = ['onboarding', 'design', 'integration', 'QA', 'launched'];
+  const columns = ['todo', 'in_progress', 'blocked', 'done'];
 
-  async function fetchCompanies() {
+  async function fetchTasks() {
     const { data } = await supabase
-      .from('companies')
-      .select('*')
+      .from('personal_tasks')
+      .select('*, companies(name)')
       .order('position', { ascending: true });
-    setCompanies(data || []);
+    setTasks(data || []);
   }
 
   useEffect(() => {
-    fetchCompanies();
+    fetchTasks();
   }, []);
 
   const handleDragStart = (event) => {
@@ -266,50 +268,40 @@ export default function Kanban() {
 
     if (activeId === overId) return;
 
-    const activeCompany = companies.find(c => c.id === activeId);
-    const overCompany = companies.find(c => c.id === overId);
+    const activeTask = tasks.find(t => t.id === activeId);
+    const overTask = tasks.find(t => t.id === overId);
 
-    if (!activeCompany) return;
+    if (!activeTask) return;
 
-    const activeContainer = activeCompany.status;
-    const overContainer = overCompany ? overCompany.status : overId;
+    const activeContainer = activeTask.status;
+    const overContainer = overTask ? overTask.status : overId;
 
-    if (!columns.includes(overContainer)) return;
-
-    // Si la compañía ya está lanzada, no se puede mover a otro estado
-    if (activeContainer === 'launched' && overContainer !== 'launched') return;
+    if (!Object.keys(COLUMN_CONFIG).includes(overContainer)) return;
 
     if (activeContainer !== overContainer) {
-      setCompanies((prev) => {
-        const activeIndex = prev.findIndex(c => c.id === activeId);
+      setTasks((prev) => {
+        const activeIndex = prev.findIndex(t => t.id === activeId);
 
-        // Si estamos sobre otra tarjeta, usamos su índice
-        // Si estamos sobre una columna vacía, lo mandamos al final
         let overIndex;
-        if (overCompany) {
-          overIndex = prev.findIndex(c => c.id === overId);
+        if (overTask) {
+          overIndex = prev.findIndex(t => t.id === overId);
         } else {
-          // Encontrar el último índice de esa columna
-          const lastIndexInCol = prev.map((c, i) => c.status === overContainer ? i : -1).reduce((max, i) => Math.max(max, i), -1);
+          const lastIndexInCol = prev.map((t, i) => t.status === overContainer ? i : -1).reduce((max, i) => Math.max(max, i), -1);
           overIndex = lastIndexInCol !== -1 ? lastIndexInCol + 1 : prev.length;
         }
 
         const updated = [...prev];
         updated[activeIndex] = {
-          ...activeCompany,
-          status: overContainer,
-          launch_date: (overContainer === 'launched' && !activeCompany.launch_date)
-            ? new Date().toISOString()
-            : activeCompany.launch_date
+          ...activeTask,
+          status: overContainer
         };
 
         return arrayMove(updated, activeIndex, Math.min(overIndex, updated.length - 1));
       });
     } else {
-      // Reordenamiento en la misma columna
-      setCompanies((prev) => {
-        const activeIndex = prev.findIndex(c => c.id === activeId);
-        const overIndex = prev.findIndex(c => c.id === overId);
+      setTasks((prev) => {
+        const activeIndex = prev.findIndex(t => t.id === activeId);
+        const overIndex = prev.findIndex(t => t.id === overId);
         if (activeIndex !== overIndex) {
           return arrayMove(prev, activeIndex, overIndex);
         }
@@ -327,38 +319,60 @@ export default function Kanban() {
     const activeId = active.id;
     const overId = over.id;
 
-    const activeIndex = companies.findIndex(c => c.id === activeId);
-    const overIndex = companies.findIndex(c => c.id === overId);
+    const activeIndex = tasks.findIndex(t => t.id === activeId);
+    const overIndex = tasks.findIndex(t => t.id === overId);
 
-    let newCompanies = companies;
+    let newTasks = tasks;
     if (activeIndex !== overIndex) {
-      newCompanies = arrayMove(companies, activeIndex, overIndex);
-      setCompanies(newCompanies);
+      newTasks = arrayMove(tasks, activeIndex, overIndex);
+      setTasks(newTasks);
     }
 
-    // Persistencia masiva del nuevo orden y estados
-    const updates = newCompanies.map((company, index) => ({
-      id: company.id,
-      name: company.name,
-      status: company.status,
-      position: index,
-      launch_date: company.launch_date
-    }));
+    const activeTask = newTasks.find(t => t.id === activeId);
+    const overTask = newTasks.find(t => t.id === overId);
+    const overStatus = overTask ? overTask.status : overId;
+    const newPos = overTask ? overTask.position : 0;
 
     const { error } = await supabase
-      .from('companies')
-      .upsert(updates);
+        .from('personal_tasks')
+        .update({ status: overStatus, position: newPos })
+        .eq('id', activeId);
 
-    if (error) {
-      console.error("Error al guardar el orden:", error);
-    }
+      if (!error) {
+        showToast('Tarea movida con éxito', 'info');
+      } else {
+        console.error("Error al guardar el orden:", error);
+      }
   };
 
   const handleDragCancel = () => {
     setActiveId(null);
   };
 
-  const activeCompany = activeId ? companies.find(c => c.id === activeId) : null;
+  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
+
+  const handleSaveTask = async (taskData) => {
+      if (editingTask) {
+          await supabase.from('personal_tasks').update(taskData).eq('id', editingTask.id);
+          fetchTasks();
+      } else {
+          const maxPos = tasks.reduce((max, t) => t.status === 'nuevo' && t.position > max ? t.position : max, -1);
+          const { error } = await supabase.from('personal_tasks').insert([{
+              ...taskData,
+              status: 'nuevo',
+              position: maxPos + 1
+          }]);
+          if (!error) {
+            await fetchTasks();
+            showToast('¡Pendiente creado!', 'success');
+          }
+      }
+  };
+
+  const handleOpenCreate = () => {
+      setEditingTask(null);
+      setIsModalOpen(true);
+  };
 
   return (
     <div className="p-8 animate-kanban-fade-in">
@@ -366,12 +380,19 @@ export default function Kanban() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[24px] font-bold text-foreground tracking-tight">
-            Tablero Kanban
+            Mis Pendientes
           </h1>
           <p className="text-[13.5px] text-muted-foreground mt-1">
-            Arrastra las companias entre columnas para actualizar su estado.
+            Gestiona tus tareas personales y vincúlalas a proyectos si lo necesitas.
           </p>
         </div>
+        <Button
+            onClick={handleOpenCreate}
+            className="gap-2 text-[13px] font-bold px-5 h-10 rounded-xl transition-all shadow-lg shadow-primary/20 bg-primary text-white hover:bg-primary/90"
+        >
+            <Plus size={16} strokeWidth={2.5} />
+            Nuevo Pendiente
+        </Button>
       </div>
 
       {/* Kanban Board */ }
@@ -384,19 +405,22 @@ export default function Kanban() {
     onDragCancel={handleDragCancel}
   >
     <div className="h-[calc(100vh-180px)] flex gap-4 overflow-x-auto pb-4">
-      {columns.map((col) => {
-        const columnCompanies = companies.filter(c => c.status === col);
+      {Object.keys(COLUMN_CONFIG).map((col) => {
+        const columnTasks = tasks.filter(t => t.status === col);
         return (
-          <DroppableColumn key={col} id={col} count={columnCompanies.length}>
+          <DroppableColumn key={col} id={col} count={columnTasks.length}>
             <SortableContext
-              items={columnCompanies.map(c => c.id)}
+              items={columnTasks.map(t => t.id)}
               strategy={verticalListSortingStrategy}
             >
-              {columnCompanies.map((company) => (
+              {columnTasks.map((task) => (
                 <SortableCard
-                  key={company.id}
-                  company={company}
-                  onEdit={(c) => setEditingCompany(c)}
+                  key={task.id}
+                  task={task}
+                  onEdit={(t) => {
+                      setEditingTask(t);
+                      setIsModalOpen(true);
+                  }}
                 />
               ))}
             </SortableContext>
@@ -412,9 +436,9 @@ export default function Kanban() {
           easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
         }}
       >
-        {activeCompany ? (
+        {activeTask ? (
           <div className="w-[280px]">
-            <KanbanCardUI company={activeCompany} isOverlay={true} />
+            <KanbanCardUI task={activeTask} isOverlay={true} />
           </div>
         ) : null}
       </DragOverlay>,
@@ -422,11 +446,12 @@ export default function Kanban() {
     )}
   </DndContext>
 
-  {/* Company Details Modal */ }
-  <CompanyDetailsModal
-    company={editingCompany}
-    onClose={() => setEditingCompany(null)}
-    onUpdate={fetchCompanies}
+  {/* Task Modal */}
+  <TaskModal
+    isOpen={isModalOpen}
+    onClose={() => setIsModalOpen(false)}
+    task={editingTask}
+    onSave={handleSaveTask}
   />
     </div >
   );

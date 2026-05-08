@@ -6,13 +6,23 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, ArrowLeft, Briefcase, FileSearch, Paintbrush, Database, ClipboardCheck, PartyPopper } from 'lucide-react';
 
-const STATUS_LABELS = {
-    onboarding: 'En Onboarding',
-    design: 'Diseño',
-    integration: 'Integración',
-    QA: 'QA',
-    launched: 'Lanzada',
+const PHASE_TO_STATUS = {
+    'Fase 1: Comercial y Administrativa': 'nuevo',
+    'Fase 2: Recopilación de Información': 'nuevo',
+    'Fase 3: Diseño y Assets': 'diseno',
+    'Fase 4: Configuración e Integración (Backend)': 'integracion',
+    'Fase 5: QA & Testing': 'qa',
+    'Fase 6: Cierre y Handover': 'entrega'
 };
+
+const PHASE_ORDER = [
+    'Fase 1: Comercial y Administrativa',
+    'Fase 2: Recopilación de Información',
+    'Fase 3: Diseño y Assets',
+    'Fase 4: Configuración e Integración (Backend)',
+    'Fase 5: QA & Testing',
+    'Fase 6: Cierre y Handover'
+];
 
 // Static definition of phases for the accordions
 const PHASES = [
@@ -96,11 +106,50 @@ export default function CompanyDetail() {
             )
         );
 
-        // Supabase update
+        // Supabase update for task
         const { error } = await supabase
             .from('company_checklists')
             .update({ is_completed: newStatus, updated_at: new Date().toISOString() })
             .eq('id', task.id);
+
+        // Recalcular y actualizar el estado de la compañía
+        const updatedTasks = currentTasks => {
+            const newTasks = currentTasks.map(t => 
+                t.id === task.id ? { ...t, is_completed: newStatus } : t
+            );
+            return [...newTasks].sort((a, b) => (a.position || 0) - (b.position || 0));
+        };
+        
+        setTasks(updatedTasks);
+
+        if (!error) {
+            // Usamos las tareas actualizadas temporalmente para calcular el estado
+            const tempTasks = tasks.map(t => t.id === task.id ? { ...t, is_completed: newStatus } : t);
+            
+            let newCompanyStatus = 'nuevo';
+            if (tempTasks.length > 0) {
+                const isAllDone = tempTasks.every(t => t.is_completed);
+                if (isAllDone) {
+                    newCompanyStatus = 'done';
+                } else {
+                    for (const phaseTitle of PHASE_ORDER) {
+                        const phaseTasks = tempTasks.filter(t => t.phase && t.phase.startsWith(phaseTitle.substring(0, 7)));
+                        if (phaseTasks.length > 0 && phaseTasks.some(t => !t.is_completed)) {
+                            newCompanyStatus = PHASE_TO_STATUS[phaseTitle] || 'nuevo';
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Actualizar la compañía en Supabase y localmente
+            await supabase
+                .from('companies')
+                .update({ status: newCompanyStatus })
+                .eq('id', companyId);
+                
+            setCompany(prev => ({ ...prev, status: newCompanyStatus }));
+        }
 
         if (error) {
             console.error("Error updating task:", error);
@@ -155,7 +204,7 @@ export default function CompanyDetail() {
                                 color: `var(--status-${company.status})` 
                             }}
                         >
-                            Fase de {STATUS_LABELS[company.status] || company.status}
+                            Fase de {company.status}
                         </span>
                         <span className="text-xs font-bold text-muted-foreground/60">• ID: {company.id.split('-')[0].toUpperCase()}</span>
                     </div>

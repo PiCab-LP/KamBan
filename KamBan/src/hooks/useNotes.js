@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useToast } from '../context/ToastContext';
 
 export function useNotes() {
+    const { showToast } = useToast();
     const [notes, setNotes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -47,6 +49,7 @@ export function useNotes() {
                 updated_at: new Date().toISOString()
             }]);
             if (error) throw error;
+            showToast('Nota creada correctamente', 'success');
             await fetchNotes();
             return { success: true };
         } catch (err) {
@@ -62,6 +65,7 @@ export function useNotes() {
                 updated_at: new Date().toISOString()
             }).eq('id', id);
             if (error) throw error;
+            showToast('Nota actualizada', 'success');
             await fetchNotes();
             return { success: true };
         } catch (err) {
@@ -75,6 +79,7 @@ export function useNotes() {
             const { error } = await supabase.from('notes').delete().eq('id', id);
             if (error) throw error;
             setNotes(notes.filter(note => note.id !== id));
+            showToast('Nota eliminada', 'info');
             return { success: true };
         } catch (err) {
             console.error('Error deleting note:', err.message);

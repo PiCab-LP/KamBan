@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { useToast } from '../context/ToastContext';
 import {
     Table,
     TableBody,
@@ -28,28 +29,45 @@ import { useNavigate } from 'react-router-dom';
 import '../App.css';
 
 const STATUS_COLORS = {
-    onboarding: 'var(--status-onboarding)',
-    design: 'var(--status-design)',
-    integration: 'var(--status-integration)',
-    QA: 'var(--status-qa)',
-    launched: 'var(--status-launched)',
+    nuevo: 'var(--status-nuevo)',
+    in_progress: 'var(--status-in_progress)',
+    blocked: 'var(--status-blocked)',
+    done: 'var(--status-done)',
 };
 
 const STATUS_BG = {
-    onboarding: 'var(--status-onboarding-bg)',
-    design: 'var(--status-design-bg)',
-    integration: 'var(--status-integration-bg)',
-    QA: 'var(--status-qa-bg)',
-    launched: 'var(--status-launched-bg)',
+    nuevo: 'var(--status-nuevo-bg)',
+    in_progress: 'var(--status-in_progress-bg)',
+    blocked: 'var(--status-blocked-bg)',
+    done: 'var(--status-done-bg)',
 };
 
 const STATUS_LABELS = {
-    onboarding: 'En Onboarding',
-    design: 'Diseño',
-    integration: 'Integración',
-    QA: 'QA',
-    launched: 'Lanzada',
+    'nuevo': 'Nuevo',
+    'diseno': 'Diseño',
+    'integracion': 'Integración',
+    'qa': 'QA',
+    'entrega': 'Lanzamiento',
+    'done': 'Entregada',
 };
+
+const PHASE_TO_STATUS = {
+    'Fase 1: Comercial y Administrativa': 'nuevo',
+    'Fase 2: Recopilación de Información': 'nuevo',
+    'Fase 3: Diseño y Assets': 'diseno',
+    'Fase 4: Configuración e Integración (Backend)': 'integracion',
+    'Fase 5: QA & Testing': 'qa',
+    'Fase 6: Cierre y Handover': 'entrega'
+};
+
+const PHASE_ORDER = [
+    'Fase 1: Comercial y Administrativa',
+    'Fase 2: Recopilación de Información',
+    'Fase 3: Diseño y Assets',
+    'Fase 4: Configuración e Integración (Backend)',
+    'Fase 5: QA & Testing',
+    'Fase 6: Cierre y Handover'
+];
 
 const AVATAR_COLORS = [
     'oklch(0.55 0.18 260)',
@@ -115,17 +133,28 @@ function Sparkline({ data, color, width = 80, height = 32 }) {
 function StatusBadge({ status }) {
     const label = STATUS_LABELS[status] || status;
 
+    const statusColors = {
+        'nuevo': 'oklch(0.6 0.22 300)',      // Púrpura (Nuevo)
+        'diseno': 'oklch(0.55 0.15 200)',    // Cyan (Diseño)
+        'integracion': 'oklch(0.55 0.18 260)', // Azul (Integración)
+        'qa': 'oklch(0.7 0.16 60)',          // Naranja (QA)
+        'entrega': 'oklch(0.6 0.16 150)',    // Verde (Lanzamiento)
+        'done': 'oklch(0.6 0.16 150)',       // Verde (Entregada)
+    };
+
+    const color = statusColors[status] || 'var(--primary)';
+
     return (
         <span
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold"
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider"
             style={{
-                backgroundColor: `var(--status-${status}-bg)`,
-                color: `var(--status-${status})`,
+                backgroundColor: `color-mix(in oklch, ${color} 10%, transparent)`,
+                color: color,
             }}
         >
             <span
                 className="w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ backgroundColor: `var(--status-${status})` }}
+                style={{ backgroundColor: color }}
             />
             {label}
         </span>
@@ -187,6 +216,7 @@ function LoadingSkeleton() {
 }
 
 export default function Dashboard() {
+    const { showToast } = useToast();
     const [companies, setCompanies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -194,6 +224,8 @@ export default function Dashboard() {
     const [currentPage, setCurrentPage] = useState(1);
     const [newCompanyName, setNewCompanyName] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isAdding, setIsAdding] = useState(false);
+    const [addError, setAddError] = useState("");
     const ITEMS_PER_PAGE = 10;
     const navigate = useNavigate();
 
@@ -210,7 +242,12 @@ export default function Dashboard() {
             setLoading(true);
             const { data, error } = await supabase
                 .from('companies')
-                .select('*')
+                .select(`
+                    *,
+                    company_checklists (
+                        is_completed
+                    )
+                `)
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
@@ -223,36 +260,53 @@ export default function Dashboard() {
     }
 
     const handleAddCompany = async () => {
-        if (!newCompanyName.trim()) return;
+        const name = newCompanyName.trim();
+        if (!name) return;
 
-        // Calcular la posición más alta actual para poner la nueva al final en el Kanban
-        const maxPos = companies.length > 0
-            ? Math.max(...companies.map(c => c.position || 0))
-            : 0;
+        // Validar si ya existe una compañía con ese nombre
+        const exists = companies.some(c => c.name.toLowerCase() === name.toLowerCase());
+        if (exists) {
+            setAddError("Ya existe una compañía con este nombre.");
+            return;
+        }
 
-        const { data, error } = await supabase
-            .from('companies')
-            .insert([{
-                name: newCompanyName,
-                status: 'onboarding',
-                position: maxPos + 1
-            }])
-            .select();
+        try {
+            setIsAdding(true);
+            setAddError("");
 
-        if (!error && data) {
-            setNewCompanyName("");
-            setIsDialogOpen(false);
-            fetchCompanies(); // Refrescar la lista
-        } else if (error) {
-            console.error("Error al agregar compañia:", error.message);
+            // Calcular la posición más alta actual
+            const maxPos = companies.length > 0
+                ? Math.max(...companies.map(c => c.position || 0))
+                : 0;
+
+            const { data, error } = await supabase
+                .from('companies')
+                .insert([{
+                    name: name,
+                    status: 'nuevo',
+                    position: maxPos + 1
+                }])
+                .select();
+
+            if (!error && data) {
+                setNewCompanyName("");
+                setIsDialogOpen(false);
+                showToast(`¡${name} agregada con éxito!`, 'success');
+                await fetchCompanies();
+            } else if (error) {
+                console.error("Error al agregar compañia:", error.message);
+                setAddError("Error al guardar en la base de datos.");
+            }
+        } finally {
+            setIsAdding(false);
         }
     };
 
     if (loading) return <LoadingSkeleton />;
 
     const totalCompanies = companies.length;
-    const activeCount = companies.filter((company) => company.status !== 'launched').length;
-    const launchedCount = companies.filter((company) => company.status === 'launched').length;
+    const activeCount = companies.filter((company) => company.status !== 'done').length;
+    const launchedCount = companies.filter((company) => company.status === 'done').length;
     const recentCount = companies.filter((company) => {
         const created = new Date(company.created_at);
         const now = new Date();
@@ -321,11 +375,16 @@ export default function Dashboard() {
                                         <Input
                                             placeholder="Ej: Company Test"
                                             value={newCompanyName}
-                                            onChange={(e) => setNewCompanyName(e.target.value)}
-                                            className="h-12 text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all"
-                                            onKeyDown={(e) => e.key === 'Enter' && handleAddCompany()}
+                                            onChange={(e) => {
+                                                setNewCompanyName(e.target.value);
+                                                setAddError("");
+                                            }}
+                                            className={`h-12 text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all ${addError ? 'border-destructive focus:ring-destructive/10' : ''}`}
+                                            onKeyDown={(e) => e.key === 'Enter' && !isAdding && handleAddCompany()}
                                             autoFocus
+                                            disabled={isAdding}
                                         />
+                                        {addError && <p className="text-[10px] font-bold text-destructive mt-2 ml-1 uppercase tracking-wider">{addError}</p>}
                                     </div>
                                     <div className="flex justify-end gap-3 mt-2">
                                         <Button
@@ -337,9 +396,10 @@ export default function Dashboard() {
                                         </Button>
                                         <Button
                                             onClick={handleAddCompany}
-                                            className="text-xs font-black h-11 px-8 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
+                                            disabled={isAdding || !newCompanyName.trim()}
+                                            className="text-xs font-black h-11 px-8 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
                                         >
-                                            Guardar Compañía
+                                            {isAdding ? 'Guardando...' : 'Guardar Compañía'}
                                         </Button>
                                     </div>
                                 </div>
@@ -415,8 +475,20 @@ export default function Dashboard() {
                                         {paginatedCompanies.map((company, index) => {
                                             const avatarColor = getAvatarColor(company.name);
                                             const initials = getInitials(company.name);
-                                            const progressMap = { onboarding: 15, design: 35, integration: 60, QA: 80, launched: 100 };
-                                            const progress = progressMap[company.status] || 0;
+                                            const checklist = company.company_checklists || [];
+                                            const totalTasks = checklist.length;
+                                            const completedTasks = checklist.filter(t => t.is_completed).length;
+                                            const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
+                                            
+                                            const statusColors = {
+                                                'nuevo': 'oklch(0.6 0.22 300)',
+                                                'diseno': 'oklch(0.55 0.15 200)',
+                                                'integracion': 'oklch(0.55 0.18 260)',
+                                                'qa': 'oklch(0.7 0.16 60)',
+                                                'entrega': 'oklch(0.6 0.16 150)',
+                                                'done': 'oklch(0.6 0.16 150)',
+                                            };
+                                            const progressColor = statusColors[company.status] || 'var(--primary)';
 
                                             return (
                                                 <TableRow
@@ -447,7 +519,7 @@ export default function Dashboard() {
                                                                     className="h-full transition-all duration-1000 ease-out rounded-full shadow-[0_0_10px_rgba(0,0,0,0.05)]"
                                                                     style={{
                                                                         width: `${progress}%`,
-                                                                        backgroundColor: `var(--status-${company.status})`,
+                                                                        backgroundColor: progressColor,
                                                                     }}
                                                                 />
                                                             </div>
