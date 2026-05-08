@@ -56,13 +56,6 @@ export default function Layout() {
           </div>
         </nav>
 
-        {/* Footer info or profile could go here */}
-        <div className="p-6 mt-auto">
-          <div className="p-4 rounded-2xl bg-sidebar-accent/30 border border-sidebar-border/50">
-            <p className="text-[10px] font-bold text-sidebar-foreground/50 uppercase tracking-widest">Workspace</p>
-            <p className="text-xs font-black text-sidebar-foreground mt-1">Prod. Integration</p>
-          </div>
-        </div>
       </aside>
 
       <main className="flex-1 overflow-hidden flex flex-col bg-background/50 backdrop-blur-3xl relative">

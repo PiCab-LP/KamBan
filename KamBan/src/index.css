@@ -112,13 +112,13 @@
     --status-onboarding: oklch(0.55 0.18 260);
     --status-design: oklch(0.55 0.18 300);
     --status-integration: oklch(0.7 0.16 60);
-    --status-qa: oklch(0.62 0.15 160);
+    --status-qa: oklch(0.65 0.22 340);
     --status-launched: oklch(0.55 0.16 150);
 
     --status-onboarding-bg: oklch(0.95 0.04 260);
     --status-design-bg: oklch(0.95 0.04 300);
     --status-integration-bg: oklch(0.95 0.04 60);
-    --status-qa-bg: oklch(0.95 0.04 160);
+    --status-qa-bg: oklch(0.96 0.04 340);
     --status-launched-bg: oklch(0.95 0.04 150);
 }
 
@@ -158,13 +158,13 @@
     --status-onboarding: oklch(0.65 0.18 260);
     --status-design: oklch(0.65 0.18 300);
     --status-integration: oklch(0.72 0.16 60);
-    --status-qa: oklch(0.65 0.15 160);
+    --status-qa: oklch(0.7 0.2 340);
     --status-launched: oklch(0.6 0.16 150);
 
     --status-onboarding-bg: oklch(0.22 0.04 260);
     --status-design-bg: oklch(0.22 0.04 300);
     --status-integration-bg: oklch(0.22 0.04 60);
-    --status-qa-bg: oklch(0.22 0.04 160);
+    --status-qa-bg: oklch(0.25 0.06 340);
     --status-launched-bg: oklch(0.22 0.04 150);
 }
 

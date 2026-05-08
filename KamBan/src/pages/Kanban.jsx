@@ -90,7 +90,7 @@ function DroppableColumn({ id, children, count }) {
       <div className="px-5 pt-5 pb-4">
         <div
           className="h-1.5 w-12 rounded-full mb-4"
-          style={{ backgroundColor: `var(--status-${id})` }}
+          style={{ backgroundColor: `var(--status-${id.toLowerCase()})` }}
         />
         <div className="flex items-center justify-between">
           <div>
@@ -104,8 +104,8 @@ function DroppableColumn({ id, children, count }) {
           <span
             className="flex items-center justify-center w-6 h-6 rounded-lg text-[10px] font-black shadow-sm"
             style={{
-              backgroundColor: `var(--status-${id}-bg)`,
-              color: `var(--status-${id})`,
+              backgroundColor: `var(--status-${id.toLowerCase()}-bg)`,
+              color: `var(--status-${id.toLowerCase()})`,
             }}
           >
             {count}
