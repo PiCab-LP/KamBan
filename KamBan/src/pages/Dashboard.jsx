@@ -308,7 +308,10 @@ export default function Dashboard() {
                                             </TableHead>
 
 
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 w-[150px] text-center h-16">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px] text-center">
+                                                Fecha de Lanzamiento
+                                            </TableHead>
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 w-[120px] text-center h-16">
                                                 Acciones
                                             </TableHead>
                                         </TableRow>
@@ -359,11 +362,18 @@ export default function Dashboard() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center font-medium text-muted-foreground/80">
-                                                        {new Date(company.onboarding_date).toLocaleDateString('es-ES', {
+                                                        {(company.onboarding_date || company.created_at) ? new Date(company.onboarding_date || company.created_at).toLocaleDateString('es-ES', {
                                                             day: 'numeric',
                                                             month: 'short',
                                                             year: 'numeric',
-                                                        })}
+                                                        }) : '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-center font-medium text-muted-foreground/80">
+                                                        {company.launch_date ? new Date(company.launch_date).toLocaleDateString('es-ES', {
+                                                            day: 'numeric',
+                                                            month: 'short',
+                                                            year: 'numeric',
+                                                        }) : '—'}
                                                     </TableCell>
                                                     <TableCell className="py-5 text-center">
                                                         <div className="flex items-center justify-center gap-2">
@@ -421,14 +431,8 @@ export default function Dashboard() {
 
             {/* ── Summary stats ───────────────────── */}
             <section className="animate-kanban-fade-in space-y-6" style={{ animationDelay: '200ms' }}>
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/40 pb-6">
-                    <div className="space-y-1">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Métricas de Rendimiento</p>
-                        <h2 className="text-xl font-black text-foreground tracking-tight">Resumen Ejecutivo</h2>
-                    </div>
-                    <p className="text-xs font-medium text-muted-foreground max-w-md md:text-right">
-                        Monitoreo en tiempo real del pipeline de integración, desde el registro inicial hasta el lanzamiento final.
-                    </p>
+                <div className="border-b border-border/40 pb-4">
+                    <h2 className="text-xl font-black text-foreground tracking-tight">Resumen en vivo de Compañías</h2>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">

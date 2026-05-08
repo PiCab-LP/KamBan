@@ -297,6 +297,9 @@ export default function Kanban() {
 
     if (!columns.includes(overContainer)) return;
 
+    // Si la compañía ya está lanzada, no se puede mover a otro estado
+    if (activeContainer === 'launched' && overContainer !== 'launched') return;
+
     if (activeContainer !== overContainer) {
       setCompanies((prev) => {
         const activeIndex = prev.findIndex(c => c.id === activeId);
@@ -313,7 +316,13 @@ export default function Kanban() {
         }
 
         const updated = [...prev];
-        updated[activeIndex] = { ...activeCompany, status: overContainer };
+        updated[activeIndex] = { 
+          ...activeCompany, 
+          status: overContainer,
+          launch_date: (overContainer === 'launched' && !activeCompany.launch_date) 
+            ? new Date().toISOString() 
+            : activeCompany.launch_date
+        };
         
         return arrayMove(updated, activeIndex, Math.min(overIndex, updated.length - 1));
       });
@@ -353,7 +362,8 @@ export default function Kanban() {
       id: company.id,
       name: company.name,
       status: company.status,
-      position: index // El nuevo orden es simplemente el índice en el array reordenado
+      position: index,
+      launch_date: company.launch_date
     }));
 
     const { error } = await supabase
