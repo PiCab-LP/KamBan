@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
 import {
@@ -228,6 +228,7 @@ export default function Dashboard() {
     const [addError, setAddError] = useState("");
     const ITEMS_PER_PAGE = 10;
     const navigate = useNavigate();
+    const hasCelebrated = useRef(false);
 
     useEffect(() => {
         fetchCompanies();
@@ -467,7 +468,7 @@ export default function Dashboard() {
 
 
                                             <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px] text-center">
-                                                Fecha de Lanzamiento
+                                                Fecha de Entrega
                                             </TableHead>
                                             <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 w-[120px] text-center h-16">
                                                 Acciones
@@ -482,7 +483,7 @@ export default function Dashboard() {
                                             const totalTasks = checklist.length;
                                             const completedTasks = checklist.filter(t => t.is_completed).length;
                                             const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
-                                            
+
                                             const statusColors = {
                                                 'nuevo': 'oklch(0.6 0.22 300)',
                                                 'diseno': 'oklch(0.55 0.15 200)',

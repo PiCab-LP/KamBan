@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Card } from "@/components/ui/card";
@@ -77,7 +77,7 @@ function DroppableColumn({ id, children, count }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   const config = COLUMN_CONFIG[id];
   if (!config) return null; // Seguridad contra estados obsoletos
-  
+
   const { title, description } = config;
 
   return (
@@ -152,7 +152,7 @@ const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit, onDelete }) => {
         </div>
 
         {/* Card Body */}
-        <div 
+        <div
           className="flex-1 flex items-center gap-3 px-3 py-2.5 cursor-pointer select-none"
           onClick={() => onEdit(task)}
         >
@@ -257,7 +257,7 @@ export default function Kanban() {
 
     if (!error) {
       showToast('Pendiente eliminado', 'info');
-      fetchTasks();
+      await fetchTasks();
     } else {
       console.error("Error al borrar tarea:", error);
       showToast('Error al eliminar', 'error');
@@ -277,18 +277,18 @@ export default function Kanban() {
 
     if (activeId === overId) return;
 
-    const activeTask = tasks.find(t => t.id === activeId);
-    const overTask = tasks.find(t => t.id === overId);
+    setTasks((prev) => {
+      const activeTask = prev.find(t => t.id === activeId);
+      const overTask = prev.find(t => t.id === overId);
 
-    if (!activeTask) return;
+      if (!activeTask) return prev;
 
-    const activeContainer = activeTask.status;
-    const overContainer = overTask ? overTask.status : overId;
+      const activeContainer = activeTask.status;
+      const overContainer = overTask ? overTask.status : overId;
 
-    if (!Object.keys(COLUMN_CONFIG).includes(overContainer)) return;
+      if (!Object.keys(COLUMN_CONFIG).includes(overContainer)) return prev;
 
-    if (activeContainer !== overContainer) {
-      setTasks((prev) => {
+      if (activeContainer !== overContainer) {
         const activeIndex = prev.findIndex(t => t.id === activeId);
 
         let overIndex;
@@ -306,17 +306,12 @@ export default function Kanban() {
         };
 
         return arrayMove(updated, activeIndex, Math.min(overIndex, updated.length - 1));
-      });
-    } else {
-      setTasks((prev) => {
-        const activeIndex = prev.findIndex(t => t.id === activeId);
-        const overIndex = prev.findIndex(t => t.id === overId);
-        if (activeIndex !== overIndex) {
-          return arrayMove(prev, activeIndex, overIndex);
-        }
-        return prev;
-      });
-    }
+      }
+      
+      // Si estamos arrastrando dentro de la misma columna, no actualizamos el estado aquí
+      // dnd-kit se encarga de la animación visual, y el estado final se guarda en handleDragEnd
+      return prev;
+    });
   };
 
   const handleDragEnd = async (event) => {
@@ -328,30 +323,65 @@ export default function Kanban() {
     const activeId = active.id;
     const overId = over.id;
 
-    const activeIndex = tasks.findIndex(t => t.id === activeId);
-    const overIndex = tasks.findIndex(t => t.id === overId);
+    setTasks((prev) => {
+        const activeIndex = prev.findIndex(t => t.id === activeId);
+        const overIndex = prev.findIndex(t => t.id === overId);
 
-    let newTasks = tasks;
-    if (activeIndex !== overIndex) {
-      newTasks = arrayMove(tasks, activeIndex, overIndex);
-      setTasks(newTasks);
+        if (activeIndex === -1) return prev;
+
+        const overTask = prev.find(t => t.id === overId);
+        const overStatus = overTask ? overTask.status : overId;
+
+        // Crear copia del array y mover
+        let newTasks = [...prev];
+        const activeTask = { ...newTasks[activeIndex], status: overStatus };
+        newTasks[activeIndex] = activeTask;
+        
+        if (activeIndex !== overIndex) {
+            newTasks = arrayMove(newTasks, activeIndex, overIndex);
+        }
+
+        // Ordenar el array final por el orden de las columnas (flujo natural del Kanban)
+        // Esto hace que el 'position' en la BD sea intuitivo para el usuario.
+        const columnOrder = Object.keys(COLUMN_CONFIG);
+        const sortedTasks = [...newTasks].sort((a, b) => {
+            const statusDiff = columnOrder.indexOf(a.status) - columnOrder.indexOf(b.status);
+            if (statusDiff !== 0) return statusDiff;
+            // Si están en la misma columna, mantenemos su orden relativo actual
+            return newTasks.indexOf(a) - newTasks.indexOf(b);
+        });
+
+        // Asignar posiciones basadas en este nuevo orden lógico
+        const finalTasks = sortedTasks.map((t, index) => ({
+            ...t,
+            position: index
+        }));
+
+        setTasks(finalTasks);
+
+        // Disparar actualización en segundo plano para TODAS las tareas con el nuevo orden intuitivo
+        updateTasksInSupabase(finalTasks);
+
+        return finalTasks;
+    });
+  };
+
+  const updateTasksInSupabase = async (tasksToUpdate) => {
+    // Actualizamos todas las tareas para mantener el orden global consistente
+    const updatePromises = tasksToUpdate.map((task) => 
+        supabase
+            .from('personal_tasks')
+            .update({ status: task.status, position: task.position })
+            .eq('id', task.id)
+    );
+
+    try {
+        await Promise.all(updatePromises);
+        showToast('Orden guardado', 'info');
+    } catch (error) {
+        console.error("Error al sincronizar el orden con Supabase:", error);
+        showToast('Error al guardar el orden', 'error');
     }
-
-    const activeTask = newTasks.find(t => t.id === activeId);
-    const overTask = newTasks.find(t => t.id === overId);
-    const overStatus = overTask ? overTask.status : overId;
-    const newPos = overTask ? overTask.position : 0;
-
-    const { error } = await supabase
-        .from('personal_tasks')
-        .update({ status: overStatus, position: newPos })
-        .eq('id', activeId);
-
-      if (!error) {
-        showToast('Tarea movida con éxito', 'info');
-      } else {
-        console.error("Error al guardar el orden:", error);
-      }
   };
 
   const handleDragCancel = () => {
@@ -361,26 +391,26 @@ export default function Kanban() {
   const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
 
   const handleSaveTask = async (taskData) => {
-      if (editingTask) {
-          await supabase.from('personal_tasks').update(taskData).eq('id', editingTask.id);
-          fetchTasks();
-      } else {
-          const maxPos = tasks.reduce((max, t) => t.status === 'nuevo' && t.position > max ? t.position : max, -1);
-          const { error } = await supabase.from('personal_tasks').insert([{
-              ...taskData,
-              status: 'nuevo',
-              position: maxPos + 1
-          }]);
-          if (!error) {
-            await fetchTasks();
-            showToast('¡Pendiente creado!', 'success');
-          }
+    if (editingTask) {
+      await supabase.from('personal_tasks').update(taskData).eq('id', editingTask.id);
+      fetchTasks();
+    } else {
+      const maxPos = tasks.reduce((max, t) => t.status === 'nuevo' && t.position > max ? t.position : max, -1);
+      const { error } = await supabase.from('personal_tasks').insert([{
+        ...taskData,
+        status: 'nuevo',
+        position: maxPos + 1
+      }]);
+      if (!error) {
+        await fetchTasks();
+        showToast('¡Pendiente creado!', 'success');
       }
+    }
   };
 
   const handleOpenCreate = () => {
-      setEditingTask(null);
-      setIsModalOpen(true);
+    setEditingTask(null);
+    setIsModalOpen(true);
   };
 
   return (
@@ -396,77 +426,82 @@ export default function Kanban() {
           </p>
         </div>
         <Button
-            onClick={handleOpenCreate}
-            className="gap-2 text-[13px] font-bold px-5 h-10 rounded-xl transition-all shadow-lg shadow-primary/20 bg-primary text-white hover:bg-primary/90"
+          onClick={handleOpenCreate}
+          className="gap-2 text-[13px] font-bold px-5 h-10 rounded-xl transition-all shadow-lg shadow-primary/20 bg-primary text-white hover:bg-primary/90"
         >
-            <Plus size={16} strokeWidth={2.5} />
-            Nuevo Pendiente
+          <Plus size={16} strokeWidth={2.5} />
+          Nuevo Pendiente
         </Button>
       </div>
 
-      {/* Kanban Board */ }
-  <DndContext
-    sensors={sensors}
-    collisionDetection={collisionDetectionStrategy}
-    onDragStart={handleDragStart}
-    onDragOver={handleDragOver}
-    onDragEnd={handleDragEnd}
-    onDragCancel={handleDragCancel}
-  >
-    <div className="h-[calc(100vh-180px)] flex gap-4 overflow-x-auto pb-4">
-      {Object.keys(COLUMN_CONFIG).map((col) => {
-        const columnTasks = tasks.filter(t => t.status === col);
-        return (
-          <DroppableColumn key={col} id={col} count={columnTasks.length}>
-            <SortableContext
-              items={columnTasks.map(t => t.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              {columnTasks.map((task) => (
-                <SortableCard
-                  key={task.id}
-                  task={task}
-                  onEdit={(t) => {
-                      setEditingTask(t);
-                      setIsModalOpen(true);
-                  }}
-                  onDelete={handleDeleteTask}
-                />
-              ))}
-            </SortableContext>
-          </DroppableColumn>
-        );
-      })}
-    </div>
-    {createPortal(
-      <DragOverlay
-        zIndex={1000}
-        dropAnimation={{
-          duration: 250,
-          easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-        }}
+      {/* Kanban Board */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={collisionDetectionStrategy}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
       >
-        {activeTask ? (
-          <div className="w-[280px]">
-            <TaskCard task={activeTask} isOverlay={true} onDelete={handleDeleteTask} onEdit={(t) => {
-                setEditingTask(t);
-                setIsModalOpen(true);
-            }} />
-          </div>
-        ) : null}
-      </DragOverlay>,
-      document.body
-    )}
-  </DndContext>
+        <div className="h-[calc(100vh-180px)] flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+          {Object.keys(COLUMN_CONFIG).map((col, index) => {
+            const columnTasks = tasks.filter(t => t.status === col);
+            return (
+              <Fragment key={col}>
+                <DroppableColumn id={col} count={columnTasks.length}>
+                  <SortableContext
+                    items={columnTasks.map(t => t.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    {columnTasks.map((task) => (
+                      <SortableCard
+                        key={task.id}
+                        task={task}
+                        onEdit={(t) => {
+                          setEditingTask(t);
+                          setIsModalOpen(true);
+                        }}
+                        onDelete={handleDeleteTask}
+                      />
+                    ))}
+                  </SortableContext>
+                </DroppableColumn>
+                {index < Object.keys(COLUMN_CONFIG).length - 1 && (
+                  <div className="w-[3px] bg-border/50 self-stretch my-12 shrink-0 rounded-full" />
+                )}
+              </Fragment>
+            );
+          })}
+        </div>
+        {createPortal(
+          <DragOverlay
+            zIndex={1000}
+            dropAnimation={{
+              duration: 250,
+              easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+            }}
+          >
+            {activeTask ? (
+              <div className="w-[280px]">
+                <TaskCard task={activeTask} isOverlay={true} onDelete={handleDeleteTask} onEdit={(t) => {
+                  setEditingTask(t);
+                  setIsModalOpen(true);
+                }} />
+              </div>
+            ) : null}
+          </DragOverlay>,
+          document.body
+        )}
+      </DndContext>
 
-  {/* Task Modal */}
-  <TaskModal
-    isOpen={isModalOpen}
-    onClose={() => setIsModalOpen(false)}
-    task={editingTask}
-    onSave={handleSaveTask}
-    onDelete={handleDeleteTask}
-  />
+      {/* Task Modal */}
+      <TaskModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        task={editingTask}
+        onSave={handleSaveTask}
+        onDelete={handleDeleteTask}
+      />
     </div >
   );
 }

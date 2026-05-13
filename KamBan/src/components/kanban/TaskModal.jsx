@@ -20,6 +20,7 @@ export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
     
     const [companies, setCompanies] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [companySearch, setCompanySearch] = useState('');
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
@@ -71,7 +72,9 @@ export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
     };
 
     const handleDelete = async () => {
-        onDelete(task.id);
+        setIsDeleting(true);
+        await onDelete(task.id);
+        setIsDeleting(false);
         setIsConfirmOpen(false);
         onClose();
     };
@@ -79,7 +82,7 @@ export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
     return (
         <>
             <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl bg-card">
+            <DialogContent className="max-w-md rounded-3xl border-none shadow-2xl bg-card overflow-hidden">
                 <DialogHeader className="pb-2">
                     <DialogTitle className="text-xl font-black tracking-tight">
                         {task ? 'Editar Pendiente' : 'Nuevo Pendiente'}
@@ -89,16 +92,22 @@ export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex flex-col gap-5 pt-2">
+                <div className="flex flex-col gap-5 pt-2 min-w-0">
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                            Título (Requerido)
-                        </label>
+                        <div className="flex justify-between items-center ml-1">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                Título (Requerido)
+                            </label>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider ${title.length >= 200 ? 'text-destructive' : 'text-muted-foreground/40'}`}>
+                                {title.length}/200
+                            </span>
+                        </div>
                         <Input 
                             placeholder="¿Qué necesitas hacer?"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="h-11 px-4 text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all"
+                            maxLength={200}
+                            className="h-11 px-4 text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all w-full min-w-0"
                             autoFocus
                         />
                     </div>
@@ -183,14 +192,20 @@ export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                            Detalles (Opcional)
-                        </label>
+                        <div className="flex justify-between items-center ml-1">
+                            <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                Detalles (Opcional)
+                            </label>
+                            <span className={`text-[9px] font-bold uppercase tracking-wider ${details.length >= 500 ? 'text-destructive' : 'text-muted-foreground/40'}`}>
+                                {details.length}/500
+                            </span>
+                        </div>
                         <Textarea 
                             placeholder="Añade contexto adicional si lo necesitas..."
                             value={details}
                             onChange={(e) => setDetails(e.target.value)}
-                            className="min-h-[100px] resize-none text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all"
+                            maxLength={500}
+                            className="min-h-[100px] resize-none text-sm rounded-2xl border-border/60 bg-muted/30 focus:bg-background transition-all w-full min-w-0 break-words overflow-wrap-anywhere"
                         />
                     </div>
 
@@ -232,6 +247,7 @@ export function TaskModal({ isOpen, onClose, task, onSave, onDelete }) {
             isOpen={isConfirmOpen}
             onClose={() => setIsConfirmOpen(false)}
             onConfirm={handleDelete}
+            isLoading={isDeleting}
             title="¿Eliminar pendiente?"
             description="Este pendiente se borrará permanentemente. Esta acción no se puede revertir."
         />

@@ -1,8 +1,8 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
-export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, title, description }) {
+export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, title, description, isLoading }) {
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
             <DialogContent className="max-w-[300px] rounded-[28px] border-none shadow-2xl bg-card p-0 overflow-hidden">
@@ -26,15 +26,24 @@ export function ConfirmDeleteModal({ isOpen, onClose, onConfirm, title, descript
                         <Button 
                             variant="ghost" 
                             onClick={onClose}
+                            disabled={isLoading}
                             className="h-11 rounded-2xl font-bold text-xs text-muted-foreground hover:bg-muted order-1"
                         >
                             Cancelar
                         </Button>
                         <Button 
                             onClick={onConfirm}
-                            className="h-11 rounded-2xl bg-destructive text-white font-black text-xs shadow-lg shadow-destructive/20 hover:bg-destructive/90 transition-all active:scale-[0.95] order-2"
+                            disabled={isLoading}
+                            className="h-11 rounded-2xl bg-destructive text-white font-black text-xs shadow-lg shadow-destructive/20 hover:bg-destructive/90 transition-all active:scale-[0.95] order-2 gap-2"
                         >
-                            Eliminar
+                            {isLoading ? (
+                                <>
+                                    <Loader2 size={14} className="animate-spin" />
+                                    Eliminando...
+                                </>
+                            ) : (
+                                'Eliminar'
+                            )}
                         </Button>
                     </div>
                 </div>

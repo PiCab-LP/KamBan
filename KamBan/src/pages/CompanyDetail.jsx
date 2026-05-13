@@ -37,7 +37,7 @@ const PHASES = [
 export default function CompanyDetail() {
     const { companyId } = useParams();
     const navigate = useNavigate();
-    
+
     const [company, setCompany] = useState(null);
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -98,10 +98,10 @@ export default function CompanyDetail() {
 
     const handleToggleTask = async (task) => {
         const newStatus = !task.is_completed;
-        
+
         // Optimistic UI update
-        setTasks(currentTasks => 
-            currentTasks.map(t => 
+        setTasks(currentTasks =>
+            currentTasks.map(t =>
                 t.id === task.id ? { ...t, is_completed: newStatus } : t
             )
         );
@@ -114,18 +114,18 @@ export default function CompanyDetail() {
 
         // Recalcular y actualizar el estado de la compañía
         const updatedTasks = currentTasks => {
-            const newTasks = currentTasks.map(t => 
+            const newTasks = currentTasks.map(t =>
                 t.id === task.id ? { ...t, is_completed: newStatus } : t
             );
             return [...newTasks].sort((a, b) => (a.position || 0) - (b.position || 0));
         };
-        
+
         setTasks(updatedTasks);
 
         if (!error) {
             // Usamos las tareas actualizadas temporalmente para calcular el estado
             const tempTasks = tasks.map(t => t.id === task.id ? { ...t, is_completed: newStatus } : t);
-            
+
             let newCompanyStatus = 'nuevo';
             if (tempTasks.length > 0) {
                 const isAllDone = tempTasks.every(t => t.is_completed);
@@ -147,15 +147,15 @@ export default function CompanyDetail() {
                 .from('companies')
                 .update({ status: newCompanyStatus })
                 .eq('id', companyId);
-                
+
             setCompany(prev => ({ ...prev, status: newCompanyStatus }));
         }
 
         if (error) {
             console.error("Error updating task:", error);
             // Revert on error
-            setTasks(currentTasks => 
-                currentTasks.map(t => 
+            setTasks(currentTasks =>
+                currentTasks.map(t =>
                     t.id === task.id ? { ...t, is_completed: !newStatus } : t
                 )
             );
@@ -186,8 +186,8 @@ export default function CompanyDetail() {
     return (
         <div className="p-4 md:p-8 max-w-5xl mx-auto animate-kanban-fade-in">
             {/* Navigation & Header */}
-            <Button 
-                variant="ghost" 
+            <Button
+                variant="ghost"
                 className="mb-6 gap-2 text-muted-foreground hover:text-foreground"
                 onClick={() => navigate('/')}
             >
@@ -197,11 +197,11 @@ export default function CompanyDetail() {
             <Card className="p-6 md:p-8 mb-8 border-border/40 shadow-sm bg-card flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                     <div className="flex items-center gap-3 mb-2">
-                        <span 
+                        <span
                             className="inline-flex items-center text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full"
-                            style={{ 
-                                backgroundColor: `var(--status-${company.status}-bg)`, 
-                                color: `var(--status-${company.status})` 
+                            style={{
+                                backgroundColor: `var(--status-${company.status}-bg)`,
+                                color: `var(--status-${company.status})`
                             }}
                         >
                             Fase de {company.status}
@@ -221,7 +221,7 @@ export default function CompanyDetail() {
                         <span className="text-2xl font-black text-primary leading-none">{overallProgress}%</span>
                     </div>
                     <div className="h-3 rounded-full bg-muted-foreground/10 overflow-hidden">
-                        <div 
+                        <div
                             className="h-full bg-primary transition-all duration-1000 ease-out rounded-full"
                             style={{ width: `${overallProgress}%` }}
                         />
@@ -244,7 +244,7 @@ export default function CompanyDetail() {
                     return (
                         <Card key={phase.id} className="border-border/40 shadow-sm overflow-hidden bg-card transition-all duration-300">
                             {/* Accordion Header */}
-                            <div 
+                            <div
                                 className="p-5 flex items-center justify-between cursor-pointer hover:bg-muted/30 transition-colors select-none"
                                 onClick={() => togglePhase(phase.id)}
                             >
@@ -275,12 +275,12 @@ export default function CompanyDetail() {
                                     ) : (
                                         <div className="flex flex-col divide-y divide-border/40">
                                             {phaseTasks.map((task) => (
-                                                <div 
-                                                    key={task.id} 
+                                                <div
+                                                    key={task.id}
                                                     className="flex items-center justify-between p-5 hover:bg-muted/20 transition-colors"
                                                 >
                                                     <div className="flex items-center gap-4">
-                                                        <Checkbox 
+                                                        <Checkbox
                                                             checked={task.is_completed}
                                                             onCheckedChange={() => handleToggleTask(task)}
                                                             className={`w-5 h-5 rounded border-2 transition-colors ${task.is_completed ? 'bg-primary border-primary' : 'border-muted-foreground/40'}`}
@@ -289,7 +289,7 @@ export default function CompanyDetail() {
                                                             {task.task_key}
                                                         </span>
                                                     </div>
-                                                    
+
                                                     {/* Optional Status Indicators */}
                                                     {task.is_completed && (
                                                         <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted px-2 py-1 rounded-md">
