@@ -42,7 +42,7 @@ export function NoteCard({ note, onEdit, onDelete, onTogglePin }) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 text-sm leading-relaxed whitespace-pre-wrap font-medium">
+            <div className="flex-1 text-sm leading-relaxed whitespace-pre-wrap font-medium break-words">
                 {note.content}
             </div>
 
