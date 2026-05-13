@@ -164,7 +164,7 @@ const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit, onDelete }) => {
           </div>
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <div className="flex items-start justify-between gap-2 mb-1">
-              <h4 className="text-xs font-black text-foreground leading-snug line-clamp-2">
+              <h4 className="text-xs font-bold text-foreground leading-snug line-clamp-2">
                 {task.title}
               </h4>
             </div>
