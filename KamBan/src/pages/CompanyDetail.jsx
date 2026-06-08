@@ -42,9 +42,9 @@ export default function CompanyDetail() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedPhases, setExpandedPhases] = useState({
-        'Fase 1: Comercial y Administrativa': true,
-        'Fase 2: Recopilación de Información': true,
-        'Fase 3: Diseño y Assets': true,
+        'Fase 1: Comercial y Administrativa': false,
+        'Fase 2: Recopilación de Información': false,
+        'Fase 3: Diseño y Assets': false,
         'Fase 4: Configuración e Integración (Backend)': false,
         'Fase 5: QA & Testing': false,
         'Fase 6: Cierre y Handover': false
