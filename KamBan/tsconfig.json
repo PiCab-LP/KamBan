@@ -1,10 +1,10 @@
 {
     "compilerOptions": {
-        "baseUrl": ".",
         "jsx": "react-jsx",
         "allowJs": true,
         "module": "ESNext",
-        "moduleResolution": "Node",
+        "moduleResolution": "bundler",
+        "skipLibCheck": true,
         "lib": ["DOM", "DOM.Iterable", "ESNext"],
         "paths": {
             "@/*": [

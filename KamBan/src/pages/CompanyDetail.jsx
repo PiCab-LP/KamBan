@@ -142,13 +142,20 @@ export default function CompanyDetail() {
                 }
             }
 
+            const updatePayload = { status: newCompanyStatus };
+            if (newCompanyStatus === 'done') {
+                updatePayload.launch_date = new Date().toISOString().split('T')[0];
+            } else {
+                updatePayload.launch_date = null;
+            }
+
             // Actualizar la compañía en Supabase y localmente
             await supabase
                 .from('companies')
-                .update({ status: newCompanyStatus })
+                .update(updatePayload)
                 .eq('id', companyId);
 
-            setCompany(prev => ({ ...prev, status: newCompanyStatus }));
+            setCompany(prev => ({ ...prev, ...updatePayload }));
         }
 
         if (error) {

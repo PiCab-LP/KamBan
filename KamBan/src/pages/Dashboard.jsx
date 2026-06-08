@@ -215,6 +215,20 @@ function LoadingSkeleton() {
     );
 }
 
+
+function formatLocalDate(dateVal) {
+    if (!dateVal) return '—';
+    const dateObj = typeof dateVal === 'string' && dateVal.includes('-') && !dateVal.includes('T')
+        ? new Date(dateVal.replace(/-/g, '/'))
+        : new Date(dateVal);
+    
+    return dateObj.toLocaleDateString('es-ES', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+    });
+}
+
 export default function Dashboard() {
     const { showToast } = useToast();
     const [companies, setCompanies] = useState([]);
@@ -533,18 +547,10 @@ export default function Dashboard() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="text-center font-medium text-muted-foreground/80">
-                                                        {(company.onboarding_date || company.created_at) ? new Date(company.onboarding_date || company.created_at).toLocaleDateString('es-ES', {
-                                                            day: 'numeric',
-                                                            month: 'short',
-                                                            year: 'numeric',
-                                                        }) : '—'}
+                                                        {formatLocalDate(company.onboarding_date || company.created_at)}
                                                     </TableCell>
                                                     <TableCell className="text-center font-medium text-muted-foreground/80">
-                                                        {company.launch_date ? new Date(company.launch_date).toLocaleDateString('es-ES', {
-                                                            day: 'numeric',
-                                                            month: 'short',
-                                                            year: 'numeric',
-                                                        }) : '—'}
+                                                        {formatLocalDate(company.launch_date)}
                                                     </TableCell>
                                                     <TableCell className="py-5 text-center">
                                                         <div className="flex items-center justify-center">
