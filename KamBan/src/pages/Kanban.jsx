@@ -3,11 +3,9 @@ import { createPortal } from 'react-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { GripVertical, Plus, CheckSquare, Trash2 } from 'lucide-react';
+import { GripVertical, Plus } from 'lucide-react';
 import {
   DndContext,
-  closestCenter,
   closestCorners,
   useDroppable,
   DragOverlay,
@@ -29,20 +27,6 @@ import { CSS } from '@dnd-kit/utilities';
 import { useToast } from '../context/ToastContext';
 import { TaskModal } from '../components/kanban/TaskModal';
 import '../App.css';
-
-const STATUS_COLORS = {
-  nuevo: 'var(--status-nuevo)',
-  in_progress: 'var(--status-in_progress)',
-  blocked: 'var(--status-blocked)',
-  done: 'var(--status-done)',
-};
-
-const STATUS_BG = {
-  nuevo: 'var(--status-nuevo-bg)',
-  in_progress: 'var(--status-in_progress-bg)',
-  blocked: 'var(--status-blocked-bg)',
-  done: 'var(--status-done-bg)',
-};
 
 const COLUMN_CONFIG = {
   nuevo: { title: 'Nuevo', description: 'Tareas por iniciar' },
@@ -129,7 +113,7 @@ function DroppableColumn({ id, children, count }) {
 }
 
 // 2. Shared Card UI
-const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit, onDelete }) => {
+const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit }) => {
   const companyName = task.companies ? task.companies.name : 'Global';
   const avatarColor = getAvatarColor(companyName);
   const initials = getInitials(companyName);
@@ -182,7 +166,7 @@ const TaskCard = ({ task, isOverlay, dragHandleProps, onEdit, onDelete }) => {
 }
 
 // 3. Sortable Wrapper
-function SortableCard({ task, onEdit, onDelete }) {
+function SortableCard({ task, onEdit }) {
   const {
     attributes,
     listeners,
@@ -203,7 +187,6 @@ function SortableCard({ task, onEdit, onDelete }) {
       <TaskCard
         task={task}
         onEdit={onEdit}
-        onDelete={onDelete}
         dragHandleProps={{ ...attributes, ...listeners }}
         isOverlay={false}
       />
@@ -323,47 +306,31 @@ export default function Kanban() {
     const activeId = active.id;
     const overId = over.id;
 
-    setTasks((prev) => {
-        const activeIndex = prev.findIndex(t => t.id === activeId);
-        const overIndex = prev.findIndex(t => t.id === overId);
+    const activeIndex = tasks.findIndex(t => t.id === activeId);
+    if (activeIndex === -1) return;
 
-        if (activeIndex === -1) return prev;
+    const overTask = tasks.find(t => t.id === overId);
+    const overStatus = overTask ? overTask.status : overId;
 
-        const overTask = prev.find(t => t.id === overId);
-        const overStatus = overTask ? overTask.status : overId;
+    let newTasks = [...tasks];
+    newTasks[activeIndex] = { ...newTasks[activeIndex], status: overStatus };
 
-        // Crear copia del array y mover
-        let newTasks = [...prev];
-        const activeTask = { ...newTasks[activeIndex], status: overStatus };
-        newTasks[activeIndex] = activeTask;
-        
-        if (activeIndex !== overIndex) {
-            newTasks = arrayMove(newTasks, activeIndex, overIndex);
-        }
+    const overIndex = tasks.findIndex(t => t.id === overId);
+    if (activeIndex !== overIndex && overIndex !== -1) {
+      newTasks = arrayMove(newTasks, activeIndex, overIndex);
+    }
 
-        // Ordenar el array final por el orden de las columnas (flujo natural del Kanban)
-        // Esto hace que el 'position' en la BD sea intuitivo para el usuario.
-        const columnOrder = Object.keys(COLUMN_CONFIG);
-        const sortedTasks = [...newTasks].sort((a, b) => {
-            const statusDiff = columnOrder.indexOf(a.status) - columnOrder.indexOf(b.status);
-            if (statusDiff !== 0) return statusDiff;
-            // Si están en la misma columna, mantenemos su orden relativo actual
-            return newTasks.indexOf(a) - newTasks.indexOf(b);
-        });
-
-        // Asignar posiciones basadas en este nuevo orden lógico
-        const finalTasks = sortedTasks.map((t, index) => ({
-            ...t,
-            position: index
-        }));
-
-        setTasks(finalTasks);
-
-        // Disparar actualización en segundo plano para TODAS las tareas con el nuevo orden intuitivo
-        updateTasksInSupabase(finalTasks);
-
-        return finalTasks;
+    const columnOrder = Object.keys(COLUMN_CONFIG);
+    const sortedTasks = [...newTasks].sort((a, b) => {
+      const statusDiff = columnOrder.indexOf(a.status) - columnOrder.indexOf(b.status);
+      if (statusDiff !== 0) return statusDiff;
+      return newTasks.indexOf(a) - newTasks.indexOf(b);
     });
+
+    const finalTasks = sortedTasks.map((t, index) => ({ ...t, position: index }));
+
+    setTasks(finalTasks);
+    updateTasksInSupabase(finalTasks);
   };
 
   const updateTasksInSupabase = async (tasksToUpdate) => {
@@ -461,7 +428,6 @@ export default function Kanban() {
                           setEditingTask(t);
                           setIsModalOpen(true);
                         }}
-                        onDelete={handleDeleteTask}
                       />
                     ))}
                   </SortableContext>
@@ -483,7 +449,7 @@ export default function Kanban() {
           >
             {activeTask ? (
               <div className="w-[280px]">
-                <TaskCard task={activeTask} isOverlay={true} onDelete={handleDeleteTask} onEdit={(t) => {
+                <TaskCard task={activeTask} isOverlay={true} onEdit={(t) => {
                   setEditingTask(t);
                   setIsModalOpen(true);
                 }} />

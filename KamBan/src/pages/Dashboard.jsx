@@ -1,4 +1,5 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, Fragment } from 'react';
+import confetti from 'canvas-confetti';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
 import {
@@ -9,7 +10,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
     Dialog,
@@ -21,26 +22,12 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
-    Building2, Activity, Rocket, Search, Filter,
-    ArrowUpRight, Eye, Calendar, Plus,
-    ChevronDown, ChevronLeft, ChevronRight
+    Building2, Activity, Rocket, Search,
+    Calendar, Plus,
+    ChevronLeft, ChevronRight, ChevronDown, ChevronUp
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 import '../App.css';
-
-const STATUS_COLORS = {
-    nuevo: 'var(--status-nuevo)',
-    in_progress: 'var(--status-in_progress)',
-    blocked: 'var(--status-blocked)',
-    done: 'var(--status-done)',
-};
-
-const STATUS_BG = {
-    nuevo: 'var(--status-nuevo-bg)',
-    in_progress: 'var(--status-in_progress-bg)',
-    blocked: 'var(--status-blocked-bg)',
-    done: 'var(--status-done-bg)',
-};
+import { CompanyExpandedDetail } from '@/components/dashboard/CompanyExpandedDetail';
 
 const STATUS_LABELS = {
     'nuevo': 'Nuevo',
@@ -57,7 +44,7 @@ const PHASE_TO_STATUS = {
     'Fase 3: Diseño y Assets': 'diseno',
     'Fase 4: Configuración e Integración (Backend)': 'integracion',
     'Fase 5: QA & Testing': 'qa',
-    'Fase 6: Cierre y Handover': 'entrega'
+    'Fase 6: Cierre y Handover': 'entrega',
 };
 
 const PHASE_ORDER = [
@@ -66,7 +53,7 @@ const PHASE_ORDER = [
     'Fase 3: Diseño y Assets',
     'Fase 4: Configuración e Integración (Backend)',
     'Fase 5: QA & Testing',
-    'Fase 6: Cierre y Handover'
+    'Fase 6: Cierre y Handover',
 ];
 
 const AVATAR_COLORS = [
@@ -240,17 +227,11 @@ export default function Dashboard() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [addError, setAddError] = useState("");
+    const [expandedCompanyIds, setExpandedCompanyIds] = useState(new Set());
+    const [companyTasks, setCompanyTasks] = useState({});
+    const [loadingTasks, setLoadingTasks] = useState({});
+    const hasCelebrated = useRef({});
     const ITEMS_PER_PAGE = 10;
-    const navigate = useNavigate();
-    const hasCelebrated = useRef(false);
-
-    useEffect(() => {
-        fetchCompanies();
-    }, []);
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchTerm, filterStatus]);
 
     async function fetchCompanies() {
         try {
@@ -260,7 +241,8 @@ export default function Dashboard() {
                 .select(`
                     *,
                     company_checklists (
-                        is_completed
+                        is_completed,
+                        item_status
                     )
                 `)
                 .order('created_at', { ascending: false });
@@ -273,6 +255,14 @@ export default function Dashboard() {
             setLoading(false);
         }
     }
+
+    useEffect(() => {
+        fetchCompanies();
+    }, []);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, filterStatus]);
 
     const handleAddCompany = async () => {
         const name = newCompanyName.trim();
@@ -314,6 +304,158 @@ export default function Dashboard() {
             }
         } finally {
             setIsAdding(false);
+        }
+    };
+
+    const fetchCompanyTasks = async (companyId) => {
+        setLoadingTasks(prev => ({ ...prev, [companyId]: true }));
+        const { data } = await supabase
+            .from('company_checklists')
+            .select('*')
+            .eq('company_id', companyId)
+            .order('position', { ascending: true });
+        setCompanyTasks(prev => ({ ...prev, [companyId]: data || [] }));
+        setLoadingTasks(prev => ({ ...prev, [companyId]: false }));
+    };
+
+    const handleExpandToggle = (companyId) => {
+        setExpandedCompanyIds(prev => {
+            const next = new Set(prev);
+            if (next.has(companyId)) {
+                next.delete(companyId);
+            } else {
+                next.add(companyId);
+                if (!companyTasks[companyId]) fetchCompanyTasks(companyId);
+            }
+            return next;
+        });
+    };
+
+    const getEffectiveStatus = (task) =>
+        task.item_status ?? (task.is_completed ? 'listo' : 'pendiente');
+
+    const recalcAndSyncCompanyStatus = async (companyId, updatedTasks) => {
+        const allListo = updatedTasks.length > 0 && updatedTasks.every(t => getEffectiveStatus(t) === 'listo');
+        let newCompanyStatus = 'nuevo';
+        if (allListo) {
+            newCompanyStatus = 'done';
+        } else {
+            for (const phaseTitle of PHASE_ORDER) {
+                const phaseTasks = updatedTasks.filter(t => t.phase?.startsWith(phaseTitle.substring(0, 7)));
+                if (phaseTasks.length > 0 && phaseTasks.some(t => getEffectiveStatus(t) !== 'listo')) {
+                    newCompanyStatus = PHASE_TO_STATUS[phaseTitle] || 'nuevo';
+                    break;
+                }
+            }
+        }
+        const updatePayload = {
+            status: newCompanyStatus,
+            launch_date: newCompanyStatus === 'done' ? new Date().toISOString().split('T')[0] : null,
+        };
+        await supabase.from('companies').update(updatePayload).eq('id', companyId);
+        setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, ...updatePayload } : c));
+        if (newCompanyStatus === 'done' && !hasCelebrated.current[companyId]) {
+            hasCelebrated.current[companyId] = true;
+            confetti({ particleCount: 220, spread: 90, origin: { y: 0.55 },
+                colors: ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#e879f9'] });
+        } else if (newCompanyStatus !== 'done') {
+            hasCelebrated.current[companyId] = false;
+        }
+    };
+
+    const handleUpdateTaskStatus = async (companyId, taskId, newItemStatus) => {
+        const prevTasks = companyTasks[companyId] || [];
+        const prevTask = prevTasks.find(t => t.id === taskId);
+        if (!prevTask) return;
+
+        const updatedTasks = prevTasks.map(t =>
+            t.id === taskId ? { ...t, item_status: newItemStatus } : t
+        );
+        setCompanyTasks(prev => ({ ...prev, [companyId]: updatedTasks }));
+
+        const { error } = await supabase
+            .from('company_checklists')
+            .update({ item_status: newItemStatus })
+            .eq('id', taskId);
+
+        if (error) {
+            setCompanyTasks(prev => ({ ...prev, [companyId]: prevTasks }));
+            showToast('Error al actualizar el estado', 'error');
+        } else {
+            await recalcAndSyncCompanyStatus(companyId, updatedTasks);
+        }
+    };
+
+    const handleReorderTasks = async (companyId, reorderedTasks) => {
+        setCompanyTasks(prev => ({ ...prev, [companyId]: reorderedTasks }));
+        try {
+            await Promise.all(
+                reorderedTasks.map((t, i) =>
+                    supabase.from('company_checklists').update({ position: i }).eq('id', t.id)
+                )
+            );
+            showToast('El nuevo orden ha sido guardado', 'info', 'Orden actualizado');
+        } catch {
+            showToast('No se pudo guardar el nuevo orden', 'error', 'Error al reordenar');
+        }
+    };
+
+    const handleEditTask = async (companyId, taskId, newName) => {
+        setCompanyTasks(prev => ({
+            ...prev,
+            [companyId]: prev[companyId].map(t =>
+                t.id === taskId ? { ...t, task_key: newName } : t
+            ),
+        }));
+        const { error } = await supabase
+            .from('company_checklists')
+            .update({ task_key: newName })
+            .eq('id', taskId);
+        if (error) {
+            showToast('No se pudo guardar el nuevo nombre', 'error', 'Error al editar');
+        } else {
+            showToast(`"${newName}"`, 'success', 'Nombre actualizado');
+        }
+    };
+
+    const handleDeleteTask = async (companyId, taskId) => {
+        const prevTasks = companyTasks[companyId] || [];
+        const deleted = prevTasks.find(t => t.id === taskId);
+        const updatedTasks = prevTasks.filter(t => t.id !== taskId);
+        setCompanyTasks(prev => ({ ...prev, [companyId]: updatedTasks }));
+        const { error } = await supabase
+            .from('company_checklists')
+            .delete()
+            .eq('id', taskId);
+        if (error) {
+            setCompanyTasks(prev => ({ ...prev, [companyId]: prevTasks }));
+            showToast('No se pudo eliminar la tarea', 'error', 'Error al eliminar');
+        } else {
+            showToast(deleted?.task_key ?? 'La tarea fue eliminada permanentemente', 'warning', 'Tarea eliminada');
+            await recalcAndSyncCompanyStatus(companyId, updatedTasks);
+        }
+    };
+
+    const handleDuplicateTask = async (companyId, task) => {
+        const tasks = companyTasks[companyId] || [];
+        const maxPos = tasks.reduce((m, t) => Math.max(m, t.position ?? 0), 0);
+        const { data, error } = await supabase
+            .from('company_checklists')
+            .insert([{
+                company_id: companyId,
+                task_key: task.task_key + ' (copia)',
+                phase: task.phase,
+                position: maxPos + 1,
+                item_status: 'pendiente',
+                is_completed: false,
+            }])
+            .select()
+            .single();
+        if (!error && data) {
+            setCompanyTasks(prev => ({ ...prev, [companyId]: [...prev[companyId], data] }));
+            showToast(`"${task.task_key} (copia)" fue creada`, 'success', 'Tarea duplicada');
+        } else {
+            showToast('No se pudo duplicar la tarea', 'error', 'Error al duplicar');
         }
     };
 
@@ -493,9 +635,14 @@ export default function Dashboard() {
                                         {paginatedCompanies.map((company, index) => {
                                             const avatarColor = getAvatarColor(company.name);
                                             const initials = getInitials(company.name);
-                                            const checklist = company.company_checklists || [];
-                                            const totalTasks = checklist.length;
-                                            const completedTasks = checklist.filter(t => t.is_completed).length;
+                                            const isExpanded = expandedCompanyIds.has(company.id);
+
+                                            // Use loaded tasks for progress if available, else fall back to nested checklists
+                                            const taskSource = companyTasks[company.id] ?? company.company_checklists ?? [];
+                                            const totalTasks = taskSource.length;
+                                            const completedTasks = taskSource.filter(t =>
+                                                (t.item_status ?? (t.is_completed ? 'listo' : 'pendiente')) === 'listo'
+                                            ).length;
                                             const progress = totalTasks === 0 ? 0 : Math.round((completedTasks / totalTasks) * 100);
 
                                             const statusColors = {
@@ -509,63 +656,81 @@ export default function Dashboard() {
                                             const progressColor = statusColors[company.status] || 'var(--primary)';
 
                                             return (
-                                                <TableRow
-                                                    key={company.id}
-                                                    className="border-b border-border/60 animate-kanban-fade-in group hover:bg-muted/10 transition-colors"
-                                                    style={{ animationDelay: `${150 + index * 30}ms` }}
-                                                >
-                                                    <TableCell className="pl-8 py-5">
-                                                        <div className="flex items-center gap-3.5">
-                                                            <div
-                                                                className="flex items-center justify-center w-9 h-9 rounded-xl text-white text-[10px] font-black shadow-sm"
-                                                                style={{ backgroundColor: avatarColor }}
-                                                            >
-                                                                {initials}
-                                                            </div>
-                                                            <span className="text-sm font-bold text-foreground">
-                                                                {company.name}
-                                                            </span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="py-5">
-                                                        <StatusBadge status={company.status} />
-                                                    </TableCell>
-                                                    <TableCell className="py-5">
-                                                        <div className="flex items-center gap-3 pr-8">
-                                                            <div className="h-2 flex-1 bg-muted-foreground/20 rounded-full overflow-hidden shadow-inner">
+                                                <Fragment key={company.id}>
+                                                    <TableRow
+                                                        className={`border-b border-border/60 animate-kanban-fade-in group transition-colors ${isExpanded ? 'bg-muted/10' : 'hover:bg-muted/10'}`}
+                                                        style={{ animationDelay: `${150 + index * 30}ms` }}
+                                                    >
+                                                        <TableCell className="pl-8 py-5">
+                                                            <div className="flex items-center gap-3.5">
                                                                 <div
-                                                                    className="h-full transition-all duration-1000 ease-out rounded-full shadow-[0_0_10px_rgba(0,0,0,0.05)]"
-                                                                    style={{
-                                                                        width: `${progress}%`,
-                                                                        backgroundColor: progressColor,
-                                                                    }}
-                                                                />
+                                                                    className="flex items-center justify-center w-9 h-9 rounded-xl text-white text-[10px] font-black shadow-sm"
+                                                                    style={{ backgroundColor: avatarColor }}
+                                                                >
+                                                                    {initials}
+                                                                </div>
+                                                                <span className="text-sm font-bold text-foreground">
+                                                                    {company.name}
+                                                                </span>
                                                             </div>
-                                                            <span className="text-[11px] font-black text-foreground tabular-nums min-w-[35px]">
-                                                                {progress}%
-                                                            </span>
-                                                        </div>
-                                                    </TableCell>
-                                                    <TableCell className="text-center font-medium text-muted-foreground/80">
-                                                        {formatLocalDate(company.onboarding_date || company.created_at)}
-                                                    </TableCell>
-                                                    <TableCell className="text-center font-medium text-muted-foreground/80">
-                                                        {formatLocalDate(company.launch_date)}
-                                                    </TableCell>
-                                                    <TableCell className="py-5 text-center">
-                                                        <div className="flex items-center justify-center">
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                className="h-9 px-4 gap-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/5 transition-all text-[11px] font-black uppercase tracking-wider hover:scale-105 active:scale-95"
-                                                                onClick={() => navigate(`/dashboard/${company.id}`)}
-                                                            >
-                                                                <Eye size={16} />
-                                                                <span>Ver Detalles</span>
-                                                            </Button>
-                                                        </div>
-                                                    </TableCell>
-                                                </TableRow>
+                                                        </TableCell>
+                                                        <TableCell className="py-5">
+                                                            <StatusBadge status={company.status} />
+                                                        </TableCell>
+                                                        <TableCell className="py-5">
+                                                            <div className="flex items-center gap-3 pr-8">
+                                                                <div className="h-2 flex-1 bg-muted-foreground/20 rounded-full overflow-hidden shadow-inner">
+                                                                    <div
+                                                                        className="h-full transition-all duration-700 ease-out rounded-full shadow-[0_0_10px_rgba(0,0,0,0.05)]"
+                                                                        style={{
+                                                                            width: `${progress}%`,
+                                                                            backgroundColor: progressColor,
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                                <span className="text-[11px] font-black text-foreground tabular-nums min-w-[35px]">
+                                                                    {progress}%
+                                                                </span>
+                                                            </div>
+                                                        </TableCell>
+                                                        <TableCell className="text-center font-medium text-muted-foreground/80">
+                                                            {formatLocalDate(company.onboarding_date || company.created_at)}
+                                                        </TableCell>
+                                                        <TableCell className="text-center font-medium text-muted-foreground/80">
+                                                            {formatLocalDate(company.launch_date)}
+                                                        </TableCell>
+                                                        <TableCell className="py-5 text-center">
+                                                            <div className="flex items-center justify-center">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    className={`h-9 px-4 gap-2 rounded-xl transition-all text-[11px] font-black uppercase tracking-wider hover:scale-105 active:scale-95 ${isExpanded ? 'text-primary bg-primary/5' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'}`}
+                                                                    onClick={() => handleExpandToggle(company.id)}
+                                                                >
+                                                                    {isExpanded
+                                                                        ? <><ChevronUp size={16} /><span>Ocultar</span></>
+                                                                        : <><ChevronDown size={16} /><span>Ver Detalles</span></>
+                                                                    }
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                    {isExpanded && (
+                                                        <TableRow className="hover:bg-transparent border-none">
+                                                            <TableCell colSpan={6} className="p-0 border-b border-border/60">
+                                                                <CompanyExpandedDetail
+                                                                    tasks={companyTasks[company.id] || []}
+                                                                    loading={!!loadingTasks[company.id]}
+                                                                    onUpdateTaskStatus={(taskId, status) => handleUpdateTaskStatus(company.id, taskId, status)}
+                                                                    onReorderTasks={(reordered) => handleReorderTasks(company.id, reordered)}
+                                                                    onEditTask={(taskId, newName) => handleEditTask(company.id, taskId, newName)}
+                                                                    onDeleteTask={(taskId) => handleDeleteTask(company.id, taskId)}
+                                                                    onDuplicateTask={(task) => handleDuplicateTask(company.id, task)}
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )}
+                                                </Fragment>
                                             );
                                         })}
                                     </TableBody>

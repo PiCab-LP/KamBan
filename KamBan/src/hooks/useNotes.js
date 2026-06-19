@@ -78,7 +78,7 @@ export function useNotes() {
         try {
             const { error } = await supabase.from('notes').delete().eq('id', id);
             if (error) throw error;
-            setNotes(notes.filter(note => note.id !== id));
+            setNotes(prev => prev.filter(note => note.id !== id));
             showToast('Nota eliminada', 'info');
             return { success: true };
         } catch (err) {
@@ -91,7 +91,7 @@ export function useNotes() {
         const oldNotes = [...notes];
         const newPinState = !currentPinState;
         
-        setNotes(notes.map(note => 
+        setNotes(prev => prev.map(note =>
             note.id === id ? { ...note, is_pinned: newPinState } : note
         ));
 
