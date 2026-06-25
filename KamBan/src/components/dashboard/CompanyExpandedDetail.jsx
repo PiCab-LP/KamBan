@@ -110,7 +110,7 @@ function SortableTaskRow({ task, commentCount, onUpdateStatus, onEdit, onDelete,
                         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                             <button
                                 key={key}
-                                onClick={() => onUpdateStatus(task.id, key)}
+                                onClick={() => { onUpdateStatus(task.id, key); setStatusOpen(false); }}
                                 className="text-[12px] font-black py-2.5 rounded-none w-full text-center transition-all hover:brightness-110 hover:scale-[1.03] active:scale-95 active:brightness-90"
                                 style={{ color: cfg.color, backgroundColor: cfg.bg }}
                             >
