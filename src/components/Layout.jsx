@@ -1,10 +1,11 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { BarChart3, Kanban, ShieldCheck, StickyNote } from 'lucide-react';
+import { BarChart3, Kanban, ShieldCheck, StickyNote, LogOut } from 'lucide-react';
+import ThemeToggle from './ThemeToggle';
 
 const navItems = [
-  { to: '/', icon: BarChart3, label: 'Dashboard' },
+  { to: '/dashboard', icon: BarChart3, label: 'Dashboard' },
   { to: '/kanban', icon: Kanban, label: 'Tablero Kanban' },
-  { to: '/notas', icon: StickyNote, label: 'Notas del Equipo' },
+  { to: '/notes', icon: StickyNote, label: 'Notas del Equipo' },
 ];
 
 export default function Layout() {
@@ -21,7 +22,7 @@ export default function Layout() {
             </div>
             <div className="flex flex-col">
               <h1 className="text-base font-bold tracking-tight leading-none text-sidebar-foreground">
-                QAmban
+                QAMBAN
               </h1>
             </div>
           </div>
@@ -31,9 +32,7 @@ export default function Layout() {
         <nav className="flex-1 px-4 py-6">
           <div className="space-y-1.5">
             {navItems.map((item) => {
-              const isActive = item.to === '/' 
-                ? (location.pathname === '/' || location.pathname.startsWith('/dashboard'))
-                : location.pathname === item.to;
+              const isActive = location.pathname === item.to;
               const Icon = item.icon;
               return (
                 <Link
@@ -58,6 +57,20 @@ export default function Layout() {
             })}
           </div>
         </nav>
+
+        {/* Footer: theme toggle + logout */}
+        <div className="flex items-center justify-between p-4">
+          <ThemeToggle />
+          <Link
+            to="/login"
+            title="Cerrar sesión"
+            aria-label="Cerrar sesión"
+            className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-muted px-3.5 text-xs font-bold text-sidebar-foreground/60 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut size={16} />
+            Cerrar sesión
+          </Link>
+        </div>
 
       </aside>
 

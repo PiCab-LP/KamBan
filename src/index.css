@@ -215,6 +215,16 @@
 }
 
 /* ──────────────────────────────────────
+   Instant theme switch
+   ────────────────────────────────────── */
+
+.theme-transition-off,
+.theme-transition-off * {
+  transition: none !important;
+  animation-duration: 0s !important;
+}
+
+/* ──────────────────────────────────────
    Base resets
    ────────────────────────────────────── */
 
