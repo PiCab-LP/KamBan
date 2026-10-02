@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { BarChart3, Kanban, Layers, StickyNote } from 'lucide-react';
+import { BarChart3, Kanban, ShieldCheck, StickyNote } from 'lucide-react';
 
 const navItems = [
   { to: '/', icon: BarChart3, label: 'Dashboard' },
@@ -16,12 +16,12 @@ export default function Layout() {
         {/* Logo */}
         <div className="p-8">
           <div className="flex items-center gap-3.5 group cursor-default">
-            <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-sidebar-primary to-primary shadow-lg shadow-sidebar-primary/20 transition-transform group-hover:scale-110 duration-300">
-              <Layers size={20} strokeWidth={2.5} className="text-white" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-sidebar-primary to-primary shadow-lg shadow-sidebar-primary/20 transition-transform group-hover:scale-110 duration-300">
+              <ShieldCheck size={20} strokeWidth={2.5} className="text-white" />
             </div>
             <div className="flex flex-col">
               <h1 className="text-lg font-black tracking-tight leading-none text-sidebar-primary-foreground uppercase">
-                KamBan
+                QAmban
               </h1>
             </div>
           </div>
