@@ -26,7 +26,7 @@ export default function Login() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-sm">
                 <ShieldCheck size={18} strokeWidth={2.5} className="text-primary-foreground" />
               </div>
-              <span className="text-xl font-bold tracking-tight text-foreground">QAMBAN</span>
+              <span className="text-xl font-bold tracking-tight text-foreground">QANBAN</span>
             </div>
           </CardHeader>
 

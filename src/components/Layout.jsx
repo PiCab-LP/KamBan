@@ -22,7 +22,7 @@ export default function Layout() {
             </div>
             <div className="flex flex-col">
               <h1 className="text-base font-bold tracking-tight leading-none text-sidebar-foreground">
-                QAMBAN
+                QANBAN
               </h1>
             </div>
           </div>

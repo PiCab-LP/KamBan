@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 
 const ThemeContext = createContext(null);
-const STORAGE_KEY = 'qamban-theme';
+const STORAGE_KEY = 'qanban-theme';
 
 function getPreferredTheme() {
   try {
