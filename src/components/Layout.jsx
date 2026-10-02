@@ -12,15 +12,15 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans">
-      <aside className="flex flex-col shrink-0 w-[260px] bg-sidebar border-r border-sidebar-border shadow-xl">
+      <aside className="flex flex-col shrink-0 w-[260px] bg-sidebar border-r border-sidebar-border shadow-sm">
         {/* Logo */}
         <div className="p-8">
-          <div className="flex items-center gap-3.5 group cursor-default">
-            <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-sidebar-primary to-primary shadow-lg shadow-sidebar-primary/20 transition-transform group-hover:scale-110 duration-300">
-              <ShieldCheck size={20} strokeWidth={2.5} className="text-white" />
+          <div className="flex items-center gap-3 group cursor-default">
+            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-sidebar-primary shadow-sm transition-transform group-hover:scale-105 duration-300">
+              <ShieldCheck size={18} strokeWidth={2.5} className="text-sidebar-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-lg font-black tracking-tight leading-none text-sidebar-primary-foreground uppercase">
+              <h1 className="text-base font-bold tracking-tight leading-none text-sidebar-foreground">
                 QAmban
               </h1>
             </div>
