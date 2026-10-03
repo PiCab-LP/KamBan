@@ -1,0 +1,147 @@
+import { useEffect, useState } from 'react';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Bug as BugIcon } from 'lucide-react';
+import { BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY } from '@/lib/domain';
+import { formatLocalDate } from '@/lib/format';
+import { StatusPills } from './StatusPills';
+
+const MAX_TITLE = 200;
+const MAX_DESCRIPTION = 5000;
+
+export function BugFormSheet({ open, onClose, bug, onSave }) {
+    const isEditing = Boolean(bug);
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [status, setStatus] = useState('nuevo');
+    const [severity, setSeverity] = useState('media');
+    const [priority, setPriority] = useState('media');
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (!open) return;
+        setTitle(bug?.title || '');
+        setDescription(bug?.description || '');
+        setStatus(bug?.status || 'nuevo');
+        setSeverity(bug?.severity || 'media');
+        setPriority(bug?.priority || 'media');
+        setError('');
+    }, [open, bug]);
+
+    const handleSave = async () => {
+        const trimmed = title.trim();
+        if (!trimmed) {
+            setError('El título no puede estar vacío.');
+            return;
+        }
+
+        setSaving(true);
+        const result = await onSave({
+            title: trimmed,
+            description: description.trim() || null,
+            status,
+            severity,
+            priority,
+        });
+        setSaving(false);
+
+        if (result?.success) onClose();
+        else setError(result?.error || 'No se pudo guardar el bug.');
+    };
+
+    return (
+        <Sheet open={open} onOpenChange={(value) => !value && onClose()}>
+            <SheetContent side="right" className="w-[420px] sm:w-[520px] flex flex-col p-0 gap-0">
+                <SheetHeader className="px-6 py-4 border-b border-border/40 shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                            <BugIcon size={16} className="text-primary" strokeWidth={2.5} />
+                        </div>
+                        <div className="min-w-0">
+                            <SheetTitle className="text-sm font-black text-foreground leading-tight">
+                                {isEditing ? 'Editar Bug' : 'Nuevo Bug'}
+                            </SheetTitle>
+                            {isEditing && (
+                                <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mt-0.5">
+                                    Creado el {formatLocalDate(bug.created_at)}
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                </SheetHeader>
+
+                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 custom-scrollbar">
+                    <div className="space-y-1.5">
+                        <label htmlFor="bug-title" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                            Título
+                        </label>
+                        <Input
+                            id="bug-title"
+                            placeholder="Ej: El botón de login no responde en móvil"
+                            value={title}
+                            maxLength={MAX_TITLE}
+                            onChange={(e) => { setTitle(e.target.value); setError(''); }}
+                            disabled={saving}
+                            autoFocus
+                            className={`h-11 text-sm rounded-xl border-border/60 bg-muted/30 focus:bg-background transition-all ${
+                                error ? 'border-destructive focus:ring-destructive/10' : ''
+                            }`}
+                        />
+                        <div className="flex items-center justify-between">
+                            {error
+                                ? <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">{error}</p>
+                                : <span />}
+                            <p className="text-[10px] text-muted-foreground/50 tabular-nums">
+                                {title.length}/{MAX_TITLE}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label htmlFor="bug-description" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                            Descripción
+                        </label>
+                        <Textarea
+                            id="bug-description"
+                            placeholder="Pasos para reproducir, resultado esperado, evidencia..."
+                            value={description}
+                            maxLength={MAX_DESCRIPTION}
+                            onChange={(e) => setDescription(e.target.value)}
+                            disabled={saving}
+                            rows={6}
+                            className="resize-none text-sm rounded-xl border-border/60 bg-muted/30 focus:bg-background transition-all"
+                        />
+                        <p className="text-[10px] text-muted-foreground/50 text-right tabular-nums">
+                            {description.length}/{MAX_DESCRIPTION}
+                        </p>
+                    </div>
+
+                    <StatusPills label="Estado" map={BUG_STATUS} value={status} onChange={setStatus} disabled={saving} />
+                    <StatusPills label="Severidad" map={BUG_SEVERITY} value={severity} onChange={setSeverity} disabled={saving} />
+                    <StatusPills label="Prioridad" map={BUG_PRIORITY} value={priority} onChange={setPriority} disabled={saving} />
+                </div>
+
+                <div className="px-6 py-4 border-t border-border/40 shrink-0 flex justify-end gap-3">
+                    <Button
+                        variant="ghost"
+                        onClick={onClose}
+                        disabled={saving}
+                        className="text-xs font-bold h-10 px-5 rounded-xl hover:bg-muted"
+                    >
+                        Cancelar
+                    </Button>
+                    <Button
+                        onClick={handleSave}
+                        disabled={saving || !title.trim()}
+                        className="text-xs font-black h-10 px-7 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
+                    >
+                        {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Registrar Bug'}
+                    </Button>
+                </div>
+            </SheetContent>
+        </Sheet>
+    );
+}

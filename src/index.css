@@ -66,16 +66,6 @@
     --tracking-wide: calc(var(--tracking-normal) + 0.025em);
     --tracking-wider: calc(var(--tracking-normal) + 0.05em);
     --tracking-widest: calc(var(--tracking-normal) + 0.1em);
-
-    /* Kanban status color tokens */
-    --color-status-nuevo: var(--status-nuevo);
-    --color-status-nuevo-bg: var(--status-nuevo-bg);
-    --color-status-in_progress: var(--status-in_progress);
-    --color-status-in_progress-bg: var(--status-in_progress-bg);
-    --color-status-blocked: var(--status-blocked);
-    --color-status-blocked-bg: var(--status-blocked-bg);
-    --color-status-done: var(--status-done);
-    --color-status-done-bg: var(--status-done-bg);
 }
 
 /* ──────────────────────────────────────
@@ -140,17 +130,6 @@
     --sidebar-accent-foreground: oklch(0.3729 0.0306 259.7328);
     --sidebar-border: oklch(0.8717 0.0093 258.3382);
     --sidebar-ring: oklch(0.5854 0.2041 277.1173);
-
-    /* Status colors */
-    --status-nuevo: oklch(0.3588 0.1354 278.6973);
-    --status-in_progress: oklch(0.5854 0.2041 277.1173);
-    --status-blocked: oklch(0.6368 0.2078 25.3313);
-    --status-done: oklch(0.4568 0.2146 277.0229);
-
-    --status-nuevo-bg: oklch(0.93 0.03 278.6973);
-    --status-in_progress-bg: oklch(0.93 0.05 277.1173);
-    --status-blocked-bg: oklch(0.93 0.05 25.3313);
-    --status-done-bg: oklch(0.93 0.04 277.0229);
 }
 
 .dark {
@@ -202,16 +181,6 @@
     --sidebar-accent-foreground: oklch(0.8717 0.0093 258.3382);
     --sidebar-border: oklch(0.4461 0.0263 256.8018);
     --sidebar-ring: oklch(0.6801 0.1583 276.9349);
-
-    --status-nuevo: oklch(0.4568 0.2146 277.0229);
-    --status-in_progress: oklch(0.6801 0.1583 276.9349);
-    --status-blocked: oklch(0.6368 0.2078 25.3313);
-    --status-done: oklch(0.5106 0.2301 276.9656);
-
-    --status-nuevo-bg: oklch(0.28 0.05 277.0229);
-    --status-in_progress-bg: oklch(0.28 0.06 276.9349);
-    --status-blocked-bg: oklch(0.28 0.06 25.3313);
-    --status-done-bg: oklch(0.28 0.06 276.9656);
 }
 
 /* ──────────────────────────────────────

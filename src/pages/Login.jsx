@@ -10,7 +10,7 @@ export default function Login() {
 
   function handleSubmit(e) {
     e.preventDefault();
-    navigate('/dashboard');
+    navigate('/backlog');
   }
 
   return (

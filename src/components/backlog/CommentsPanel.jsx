@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { supabase } from '@/lib/supabaseClient';
+import { useComments } from '@/hooks/useComments';
 import { MessageSquare, Send, Trash2 } from 'lucide-react';
 
 function formatDate(dateStr) {
@@ -10,56 +10,32 @@ function formatDate(dateStr) {
     return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-export function CommentsPanel({ open, onClose, task }) {
-    const [comments, setComments] = useState([]);
+/** `target` es `{ type: 'feature' | 'bug', id, title }`. */
+export function CommentsPanel({ open, onClose, target }) {
+    const { comments, loading, createComment, deleteComment } = useComments(
+        target?.type === 'bug' ? { bugId: target.id } : { featureId: target?.id ?? null },
+    );
+
     const [newComment, setNewComment] = useState('');
-    const [loading, setLoading] = useState(false);
     const [sending, setSending] = useState(false);
     const [deletingId, setDeletingId] = useState(null);
     const bottomRef = useRef(null);
-
-    useEffect(() => {
-        if (!open || !task) return;
-        setLoading(true);
-        supabase
-            .from('task_comments')
-            .select('*')
-            .eq('task_id', task.id)
-            .order('created_at', { ascending: true })
-            .then(({ data }) => {
-                setComments(data || []);
-                setLoading(false);
-            });
-    }, [open, task?.id, task]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [comments]);
 
     const handleSend = async () => {
-        if (!newComment.trim() || !task) return;
+        if (!newComment.trim() || !target) return;
         setSending(true);
-        const { data, error } = await supabase
-            .from('task_comments')
-            .insert([{ task_id: task.id, content: newComment.trim() }])
-            .select()
-            .single();
-        if (!error && data) {
-            setComments(prev => [...prev, data]);
-            setNewComment('');
-        }
+        const result = await createComment(newComment.trim());
+        if (result.success) setNewComment('');
         setSending(false);
     };
 
     const handleDelete = async (commentId) => {
         setDeletingId(commentId);
-        const { error } = await supabase
-            .from('task_comments')
-            .delete()
-            .eq('id', commentId);
-        if (!error) {
-            setComments(prev => prev.filter(c => c.id !== commentId));
-        }
+        await deleteComment(commentId);
         setDeletingId(null);
     };
 
@@ -77,10 +53,10 @@ export function CommentsPanel({ open, onClose, task }) {
                         </div>
                         <div className="min-w-0">
                             <SheetTitle className="text-sm font-black text-foreground leading-tight truncate">
-                                {task?.task_key}
+                                {target?.title}
                             </SheetTitle>
                             <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest mt-0.5">
-                                Comentarios
+                                Comentarios · {target?.type === 'bug' ? 'Bug' : 'Feature'}
                             </p>
                         </div>
                     </div>

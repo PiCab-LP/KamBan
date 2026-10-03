@@ -1,10 +1,11 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { BarChart3, Kanban, ShieldCheck, StickyNote, LogOut } from 'lucide-react';
+import { Layers, Bug, FlaskConical, ShieldCheck, StickyNote, LogOut } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
 const navItems = [
-  { to: '/dashboard', icon: BarChart3, label: 'Dashboard' },
-  { to: '/kanban', icon: Kanban, label: 'Tablero Kanban' },
+  { to: '/backlog', icon: Layers, label: 'Backlog de QA' },
+  { to: '/bugs', icon: Bug, label: 'Tablero de Bugs' },
+  { to: '/casos-de-prueba', icon: FlaskConical, label: 'Casos de Prueba' },
   { to: '/notes', icon: StickyNote, label: 'Notas del Equipo' },
 ];
 

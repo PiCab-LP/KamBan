@@ -1,4 +1,7 @@
-import { Pin, Trash2, Edit2, Clock, Globe, Building } from 'lucide-react';
+import { Pin, Trash2, Edit2, Clock, Globe, Layers, GitBranch, Bug } from 'lucide-react';
+import { getNoteLink } from '@/hooks/useNotes';
+
+const LINK_ICONS = { epic: Layers, feature: GitBranch, bug: Bug };
 
 function getRelativeTime(dateInput) {
     if (!dateInput) return '';
@@ -14,9 +17,10 @@ function getRelativeTime(dateInput) {
 }
 
 export function NoteCard({ note, onEdit, onDelete, onTogglePin }) {
-    const isGlobal = !note.company_id;
-    const companyName = isGlobal ? 'Global' : note.companies?.name || 'Desconocida';
-    
+    const link = getNoteLink(note);
+    const LinkIcon = link ? LINK_ICONS[link.type] : Globe;
+    const linkLabel = link ? `${link.label} · ${link.name || 'Sin nombre'}` : 'Global';
+
     // Formatting date
     const dateToUse = note.updated_at || note.created_at;
     const timeAgo = getRelativeTime(dateToUse);
@@ -29,11 +33,11 @@ export function NoteCard({ note, onEdit, onDelete, onTogglePin }) {
                 color: 'var(--card-foreground)'
             }}
         >
-            {/* Header: Company & Date */}
+            {/* Header: vínculo y fecha */}
             <div className="flex items-center justify-between mb-3 text-xs font-semibold opacity-70">
-                <div className="flex items-center gap-1.5">
-                    {isGlobal ? <Globe size={14} /> : <Building size={14} />}
-                    <span className="uppercase tracking-widest">{companyName}</span>
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <LinkIcon size={14} className="shrink-0" />
+                    <span className="uppercase tracking-widest truncate">{linkLabel}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                     <Clock size={12} />

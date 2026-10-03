@@ -1,16 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-    DropdownMenu, 
-    DropdownMenuContent, 
-    DropdownMenuItem, 
-    DropdownMenuTrigger 
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
+import { EntityPicker } from '@/components/ui/EntityPicker';
 import { supabase } from '@/lib/supabaseClient';
-import { ChevronDown, Search, Building, Globe, Check } from 'lucide-react';
+import { linkToColumns } from '@/hooks/useNotes';
+import { Layers, GitBranch, Bug } from 'lucide-react';
 
 const PREDEFINED_COLORS = [
     { label: 'Amarillo', value: '#FEF3C7' }, // amber-100
@@ -20,56 +15,61 @@ const PREDEFINED_COLORS = [
     { label: 'Púrpura', value: '#F3E8FF' }   // purple-100
 ];
 
+function noteToLink(note) {
+    if (note?.epic_id) return { type: 'epic', id: note.epic_id };
+    if (note?.feature_id) return { type: 'feature', id: note.feature_id };
+    if (note?.bug_id) return { type: 'bug', id: note.bug_id };
+    return null;
+}
+
 export function NoteForm({ isOpen, onClose, note, onSave }) {
     const [content, setContent] = useState('');
-    const [companyId, setCompanyId] = useState('');
+    const [link, setLink] = useState(null);
     const [color, setColor] = useState('');
     const [isPinned, setIsPinned] = useState(false);
-    
-    const [companies, setCompanies] = useState([]);
+
+    const [groups, setGroups] = useState([]);
     const [isSaving, setIsSaving] = useState(false);
-    const [companySearch, setCompanySearch] = useState('');
 
-    const selectedCompany = useMemo(() => 
-        companies.find(c => c.id === companyId), 
-    [companies, companyId]);
-
-    const filteredCompanies = useMemo(() => 
-        companies.filter(c => c.name.toLowerCase().includes(companySearch.toLowerCase())),
-    [companies, companySearch]);
-
+    // Una nota puede colgar de cualquiera de los tres niveles de la jerarquía.
     useEffect(() => {
-        // Fetch companies for dropdown
-        const fetchCompanies = async () => {
-            const { data } = await supabase.from('companies').select('id, name').order('name');
-            if (data) setCompanies(data);
+        const fetchTargets = async () => {
+            const [epics, features, bugs] = await Promise.all([
+                supabase.from('epics').select('id, name').order('name'),
+                supabase.from('features').select('id, name').order('name'),
+                supabase.from('bugs').select('id, title').order('title'),
+            ]);
+
+            setGroups([
+                { type: 'epic', label: 'Epics', icon: Layers, items: epics.data || [] },
+                { type: 'feature', label: 'Features', icon: GitBranch, items: features.data || [] },
+                {
+                    type: 'bug',
+                    label: 'Bugs',
+                    icon: Bug,
+                    items: (bugs.data || []).map((b) => ({ id: b.id, name: b.title })),
+                },
+            ]);
         };
-        fetchCompanies();
+        fetchTargets();
     }, []);
 
     useEffect(() => {
         if (isOpen) {
-            if (note) {
-                setContent(note.content || '');
-                setCompanyId(note.company_id || '');
-                setColor(note.color || '');
-                setIsPinned(note.is_pinned || false);
-            } else {
-                setContent('');
-                setCompanyId('');
-                setColor('');
-                setIsPinned(false);
-            }
+            setContent(note?.content || '');
+            setLink(noteToLink(note));
+            setColor(note?.color || '');
+            setIsPinned(note?.is_pinned || false);
         }
     }, [isOpen, note]);
 
     const handleSave = async () => {
         if (!content.trim()) return;
         setIsSaving(true);
-        
+
         const noteData = {
             content: content.trim(),
-            company_id: companyId || null,
+            ...linkToColumns(link),
             color: color || null,
             is_pinned: isPinned
         };
@@ -107,81 +107,15 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
 
                     <div className="space-y-1.5">
                         <label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60 ml-1">
-                            Asignar a Compañía
+                            Vincular a
                         </label>
-                        
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button 
-                                    variant="outline" 
-                                    className="w-full h-11 px-4 justify-between text-sm rounded-2xl border-border/60 bg-muted/30 hover:bg-background transition-all font-medium"
-                                >
-                                    <div className="flex items-center gap-2 truncate">
-                                        {selectedCompany ? (
-                                            <>
-                                                <Building size={16} className="text-primary/70 shrink-0" />
-                                                <span className="truncate">{selectedCompany.name}</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Globe size={16} className="text-muted-foreground/50 shrink-0" />
-                                                <span className="text-muted-foreground/70">Global (Sin asignar)</span>
-                                            </>
-                                        )}
-                                    </div>
-                                    <ChevronDown size={16} className="text-muted-foreground/40 shrink-0" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent 
-                                className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[300px] p-2 rounded-2xl border-border/40 shadow-2xl animate-in fade-in-0 zoom-in-95"
-                                align="start"
-                            >
-                                <div className="relative mb-2 px-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/40" size={14} />
-                                    <Input 
-                                        placeholder="Buscar compañía..." 
-                                        value={companySearch}
-                                        onChange={(e) => setCompanySearch(e.target.value)}
-                                        className="h-9 pl-8 text-xs rounded-xl border-none bg-muted/50 focus:bg-muted"
-                                    />
-                                </div>
-                                
-                                <div className="max-h-[200px] overflow-y-auto custom-scrollbar space-y-0.5">
-                                    <DropdownMenuItem 
-                                        onClick={() => setCompanyId('')}
-                                        className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-primary/5"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <Globe size={14} className={!companyId ? 'text-primary' : 'text-muted-foreground/40'} />
-                                            <span className={!companyId ? 'font-bold text-primary' : 'text-foreground/70'}>Global (Sin asignar)</span>
-                                        </div>
-                                        {!companyId && <Check size={14} className="text-primary" />}
-                                    </DropdownMenuItem>
-                                    
-                                    {filteredCompanies.map(c => (
-                                        <DropdownMenuItem 
-                                            key={c.id} 
-                                            onClick={() => setCompanyId(c.id)}
-                                            className="flex items-center justify-between rounded-xl px-3 py-2 cursor-pointer transition-colors focus:bg-primary/5"
-                                        >
-                                            <div className="flex items-center gap-2 truncate">
-                                                <Building size={14} className={companyId === c.id ? 'text-primary' : 'text-muted-foreground/40'} />
-                                                <span className={`truncate ${companyId === c.id ? 'font-bold text-primary' : 'text-foreground/70'}`}>
-                                                    {c.name}
-                                                </span>
-                                            </div>
-                                            {companyId === c.id && <Check size={14} className="text-primary" />}
-                                        </DropdownMenuItem>
-                                    ))}
-                                    
-                                    {filteredCompanies.length === 0 && companySearch && (
-                                        <div className="py-4 text-center text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-                                            No hay resultados
-                                        </div>
-                                    )}
-                                </div>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                        <EntityPicker
+                            value={link}
+                            onChange={setLink}
+                            groups={groups}
+                            searchPlaceholder="Buscar epic, feature o bug..."
+                            disabled={isSaving}
+                        />
                     </div>
 
                     <div className="flex items-center justify-between">
