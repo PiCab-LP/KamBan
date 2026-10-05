@@ -1,11 +1,9 @@
 # Handoff — QANBAN
 
-Estado al **5 de octubre de 2026**. Último commit: `e0db7e7 feat: some revamps in the backlog`
-(el rediseño del backlog como árbol de carpetas).
-
-> ⚠️ Hay cambios **sin commitear** sobre ese commit: tabla única para Epic/Feature/Bug,
-> bugs sin estado en el Backlog, fecha de creación editable, y desinstaladas las
-> dependencias huérfanas. Todo compila y pasa lint. Detalle en "Cambios recientes".
+Estado al **5 de octubre de 2026**. Último commit: `1a1e613 feat: updated css variables so titles can be aligned`.
+No hay cambios sin commitear. Los commits recientes traen, en orden: el árbol de carpetas
+(`e0db7e7`), todo lo descrito en "Cambios recientes" salvo la tabla única (`e702f47`), y la
+tabla única de Epic/Feature/Bug (`1a1e613`, cuyo mensaje no lo refleja).
 
 Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs con Cloudinary): ver
 [PENDIENTES.md](PENDIENTES.md).
@@ -40,7 +38,7 @@ Las migraciones **ya están aplicadas** en el proyecto remoto de Supabase, y est
 verificaron de punta a punta contra la base real:
 
 - Crear, editar, borrar y cambiar estado de Epics, Features y Bugs.
-- Navegación en árbol de carpetas: Epic → Feature → Bugs, desplegable por nivel.
+- Navegación en árbol dentro de una sola tabla: Epic → Feature → Bugs, desplegable por nivel.
 - **Marcado automático de "Reabierto"** al cambiar el estado desde la hoja de clasificación
   del Tablero: al mover un bug de `resuelto`/`cerrado` a `nuevo`/`en_progreso` se marca
   solo, con etiqueta roja y toast.
@@ -53,20 +51,20 @@ verificaron de punta a punta contra la base real:
 
 `npm run lint` y `npm run build` pasan limpios.
 
-### Cambios recientes (sin commitear)
+### Cambios recientes (ya commiteados)
 
-- **Tabla única (experimento reciente).** Antes, los features y bugs eran listas con rejilla
-  propia dentro de una celda del Epic, con cabeceras de columna repetidas y ~40 líneas de
-  cálculo para alinear su Estado con el del Epic. Ahora Epics, Features y Bugs son **filas de
-  la misma tabla**: la primera columna se llama "Elemento", no hay sub-cabeceras, y Estado,
+- **Tabla única.** Antes, los features y bugs eran listas con rejilla propia dentro de una
+  celda del Epic, con cabeceras de columna repetidas y ~40 líneas de cálculo para alinear su
+  Estado con el del Epic. Ahora Epics, Features y Bugs son **filas de la misma tabla**: la
+  primera columna se llama "Elemento" (nombre provisional), no hay sub-cabeceras, y Estado,
   Fecha y Acciones se leen de la cabecera principal (mismo `x` en los tres niveles, medido).
   La jerarquía se marca con sangría, ícono (avatar / carpeta / bug ámbar), fondos escalonados,
   la franja violeta a la izquierda de las filas anidadas y una línea que cuelga de la carpeta
-  del feature hasta sus bugs (`Connector`). Cada feature muestra su conteo de bugs como
-  chip junto al nombre. Se hizo para *probar cómo queda*; la versión anterior (rejilla
-  `TREE_GRID` con tarjetas por feature) **nunca se commiteó**: solo queda una copia temporal
-  fuera del repo. Si el experimento convence, conviene commitearlo; si no, hay que pedir que
-  se reconstruya la anterior. Los anchos de columna y sangrías viven en
+  del feature hasta sus bugs (`Connector`). Cada feature muestra su conteo de bugs como chip
+  junto al nombre. Nació como prueba y quedó adoptada en `1a1e613`. La versión anterior (rejilla
+  `TREE_GRID`, tarjeta por feature, cabeceras propias) sigue en el historial: `git show
+  e702f47:src/components/backlog/FeatureBugList.jsx`, y lo mismo para `EpicExpandedDetail.jsx`,
+  `TreeRow.jsx`, `treeLayout.js` y `Backlog.jsx`. Los anchos de columna y sangrías viven en
   `src/components/backlog/treeLayout.js`.
 - **Los bugs se registran en el Backlog y se clasifican en el Tablero.** Para no manejar
   las mismas opciones en dos sitios, el Backlog ya no muestra ni edita estado, severidad,

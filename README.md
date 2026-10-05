@@ -16,6 +16,9 @@ prueba en construcción.
 > salvo el campo "Compañía" de Casos de Prueba, que está pendiente de definir
 > (ver [HANDOFF.md](HANDOFF.md)).
 
+Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs): [PENDIENTES.md](PENDIENTES.md).
+Estado del proyecto y decisiones de diseño: [HANDOFF.md](HANDOFF.md).
+
 ## Stack
 
 | Qué | Versión / nota |
@@ -91,6 +94,7 @@ src/
       TreeRow.jsx     Etiqueta y acciones compartidas de las filas del árbol
       treeLayout.js   Anchos de columna y sangrías del árbol
       CreatedAtField  Selector de fecha de creación de features y bugs
+      BugImagesPlaceholder  Mockup (inerte) de la zona para adjuntar imágenes a un bug
     notes/            Tarjetas y formulario de notas
     ui/               shadcn + componentes propios compartidos
   context/            ToastContext · ThemeContext
