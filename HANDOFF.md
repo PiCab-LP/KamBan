@@ -1,10 +1,14 @@
 # Handoff — QANBAN
 
-Estado al **5 de octubre de 2026**. Último commit: `51caf1b feat: added documentation of the project`.
+Estado al **5 de octubre de 2026**. Último commit: `e0db7e7 feat: some revamps in the backlog`
+(el rediseño del backlog como árbol de carpetas).
 
-> ⚠️ El rediseño del backlog como árbol de carpetas **está sin commitear**: hay cambios en
-> `Backlog.jsx`, `EpicExpandedDetail.jsx`, `FeatureBugList.jsx` y el archivo nuevo
-> `TreeRow.jsx`. Todo compila y pasa lint.
+> ⚠️ Hay cambios **sin commitear** sobre ese commit: estados alineados bajo el del Epic,
+> cabeceras de columna en features y bugs, fecha de creación editable, y desinstaladas
+> las dependencias huérfanas. Todo compila y pasa lint. Detalle en "Cambios recientes".
+
+Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs con Cloudinary): ver
+[PENDIENTES.md](PENDIENTES.md).
 
 Para montar el entorno, ver [README.md](README.md). Este documento cubre **en qué punto
 está el trabajo, qué quedó pendiente y por qué se tomaron ciertas decisiones**.
@@ -37,8 +41,9 @@ verificaron de punta a punta contra la base real:
 
 - Crear, editar, borrar y cambiar estado de Epics, Features y Bugs.
 - Navegación en árbol de carpetas: Epic → Feature → Bugs, desplegable por nivel.
-- **Marcado automático de "Reabierto"** desde el dropdown de estado: al mover un bug de
-  `resuelto`/`cerrado` a `nuevo`/`en_progreso` se marca solo, con etiqueta roja y toast.
+- **Marcado automático de "Reabierto"** al cambiar el estado desde la hoja de clasificación
+  del Tablero: al mover un bug de `resuelto`/`cerrado` a `nuevo`/`en_progreso` se marca
+  solo, con etiqueta roja y toast.
 - Agregar feature desde la fila del Epic y agregar bug desde la fila del Feature, incluso
   con el padre colapsado (se despliega solo).
 - Comentarios en Features y en Bugs, con hilos y contadores independientes.
@@ -47,6 +52,43 @@ verificaron de punta a punta contra la base real:
 - Modo claro/oscuro, instantáneo.
 
 `npm run lint` y `npm run build` pasan limpios.
+
+### Cambios recientes (sin commitear)
+
+- **Estados alineados.** Los estados de Features y Bugs quedan exactamente bajo el estado
+  del Epic (se midió: mismo `x` en los tres niveles). Para lograrlo la tabla del Epic usa
+  `table-fixed` y las filas anidadas comparten sus anchos de columna. Las medidas viven en
+  `src/components/backlog/treeLayout.js`.
+- **Cabeceras de columna.** La lista de features lleva *Feature · Bugs · Estado · Fecha de
+  creación · Acciones*, y la zona de bugs *Bugs (n) · Fecha de creación*.
+- **Los bugs se registran en el Backlog y se clasifican en el Tablero.** Para no manejar
+  las mismas opciones en dos sitios, el Backlog ya no muestra ni edita estado, severidad,
+  prioridad ni la etiqueta "Reabierto" de un bug; solo título, descripción y fecha. Todo
+  eso vive en el Tablero de Bugs: la tarjeta muestra severidad, prioridad y "Reabierto", y
+  al abrirla sale la hoja *Clasificar Bug* (estado, severidad, prioridad; el título y la
+  descripción solo se leen). `BugFormSheet` tiene por eso dos modos, `backlog` y `board`.
+  Un bug nuevo nace con los defaults de la base: `nuevo`, severidad `media`, prioridad `media`.
+  El menú de acciones de la fila del bug (Notas, editar, eliminar) sí se queda en el Backlog.
+- **"Ver en el tablero →"** en cada bug del Backlog lleva a `/bugs?bug=<id>`. El Tablero
+  centra esa tarjeta, la resalta 3,5 s y limpia el parámetro de la URL para que recargar no
+  la resalte otra vez. El botón ocupa el hueco donde el feature muestra su Estado.
+- **Jerarquía de la zona de bugs.** Antes los bugs parecían una continuación de la fila del
+  feature. Ahora: el feature abierto se tiñe (`bg-primary/5`); la zona de bugs tiene fondo
+  propio y una cabecera "🐞 BUGS · n"; una línea cuelga del ícono de carpeta del feature y
+  cada bug se une a ella con un trazo (`Connector`, alineada con `FEATURE_ICON_CENTER`); y
+  los bugs llevan su propio color (`BUG_ACCENT`, ámbar) frente al violeta de los features.
+  La cabecera ya no repite las etiquetas "Acciones" del feature.
+- **Mockup de imágenes en el formulario de bug** (`BugImagesPlaceholder`): solo la zona de
+  arrastrar y soltar, inerte y marcada "Próximamente". Detalle y decisiones
+  pendientes en [PENDIENTES.md](PENDIENTES.md).
+- **`updateBug` ahora respeta las reglas de estado.** Antes, cambiar el estado desde un
+  formulario no marcaba "Reabierto" ni recolocaba la tarjeta; ahora lo hace igual que el
+  drag. Se eliminó `updateBugStatus`, que solo usaba el dropdown del Backlog.
+- **Fecha de creación editable** en features y bugs (`CreatedAtField`), también visible
+  como columna. **No hizo falta migración**: se escribe en `created_at`, que ya era una
+  columna normal con default `now()`, sin restricción en RLS. Probado de punta a punta
+  cambiando la fecha de un bug real y restaurándola.
+- Se desinstalaron `canvas-confetti` y `@fontsource-variable/inter`.
 
 ---
 
@@ -96,19 +138,27 @@ Hay que probarlo a mano. Lo que importa comprobar:
 
 - que arrastrar entre columnas cambie el estado del bug y persista;
 - que mover un bug de **Resuelto → Nuevo arrastrando** también lo marque como reabierto
-  (la regla vive en `shouldFlagReopen`, y la llaman tanto el dropdown de la tabla como
-  `handleDragEnd`; si solo funcionara en uno, discreparían).
+  (la regla vive en `shouldFlagReopen`, y la llaman tanto `updateBug` —la hoja de
+  clasificación, esa sí probada— como `moveBug` desde `handleDragEnd`; si solo funcionara
+  en uno, discreparían).
 
-### 4. Dependencias huérfanas
-
-`canvas-confetti` y `@fontsource-variable/inter` siguen en `package.json` pero ya no se
-usan en `src/`. El confetti se disparaba desde la lógica de estado derivado, que se
-eliminó. Se pueden desinstalar.
-
-### 5. Sin autenticación
+### 4. Sin autenticación
 
 Ver el aviso del [README](README.md#seguridad). No es un olvido, es una decisión
-consciente con su checklist de salida documentado en el SQL de RLS.
+consciente con su checklist de salida documentado en el SQL de RLS. El login y el
+"Cerrar sesión" son solo navegación.
+
+### 5. Fechas de creación editables: `created_at` ya no es un registro fiable
+
+Como `created_at` se puede fijar a mano en features y bugs, ya no sirve como marca de
+auditoría de cuándo se insertó la fila. Si algún día hace falta eso, habría que añadir
+una columna aparte (p. ej. `reported_at` para la fecha editable) y dejar `created_at`
+intacto. Hoy no hace falta, pero conviene saberlo antes de apoyar reportes en esa columna.
+
+### 6. Bundle de 680 kB
+
+`vite build` avisa de un chunk mayor a 500 kB. No es urgente; `React.lazy` por ruta lo
+resolvería.
 
 ---
 
@@ -155,10 +205,18 @@ La pantalla pasó por varias iteraciones hasta llegar a esta forma. Lo que convi
 antes de volver a moverla:
 
 **Una sola rejilla (`TREE_GRID`) para features y bugs, y la sangría solo en la etiqueta.**
-Esto es lo más importante del archivo `TreeRow.jsx`. Al principio la sangría se aplicaba al
-contenedor de la fila, lo que desplazaba también las columnas de estado, severidad y
+Esto es lo más importante de `treeLayout.js` / `TreeRow.jsx`. Al principio la sangría se aplicaba al
+contenedor de la fila, lo que desplazaba también las columnas de estado, fecha y
 acciones: cada nivel quedaba descuadrado respecto al de arriba y el árbol se leía
 desordenado. Indentando solo la etiqueta, todas las columnas de la derecha quedan a plomo.
+
+**El Estado de cada nivel cae bajo el del Epic, y eso condiciona el orden de columnas.**
+Estado, Fecha y Acciones tienen el mismo ancho en el Epic y en las filas anidadas; todo lo
+demás (hoy solo el conteo de bugs del feature) va a la *izquierda* del Estado, en el
+espacio de la columna del nombre. Los bugs ya no tienen Estado en el Backlog, así que su
+título ocupa ese espacio y solo conservan Fecha y Acciones bajo las del Epic. Hay un desfase de 13px (padding de la lista + borde de la
+tarjeta) que `TREE_EDGE_INSET` compensa: si tocas ese padding o borde, la alineación se
+rompe en silencio. Verifica midiendo `getBoundingClientRect` del badge de estado en los tres niveles.
 
 **La jerarquía se marca por contención, no solo por sangría.** Cada feature es una tarjeta
 con su borde y sombra, separada de las demás; el bloque desplegado del Epic lleva una
@@ -205,7 +263,9 @@ cada píxel cuenta.
 | El dominio (estados, colores, severidades) | `src/lib/domain.js` |
 | Cualquier consulta a la base | `src/hooks/` — el patrón está en `useNotes.js` |
 | La jerarquía del backlog | `src/pages/Backlog.jsx` → `EpicExpandedDetail` → `FeatureBugList` |
-| Rejilla, sangría o acciones del árbol | `src/components/backlog/TreeRow.jsx` |
-| El tablero y su drag | `src/pages/BugBoard.jsx` + `src/lib/position.js` |
+| Anchos de columna y sangrías del árbol | `src/components/backlog/treeLayout.js` |
+| Cabecera, etiqueta y acciones del árbol | `src/components/backlog/TreeRow.jsx` |
+| Fecha de creación de features y bugs | `CreatedAtField.jsx` + `dateInputToTimestamp` en `src/lib/format.js` |
+| El tablero, su drag y la clasificación de bugs | `src/pages/BugBoard.jsx` + `src/lib/position.js` + `BugFormSheet` (modo `board`) |
 | Casos de Prueba | `src/pages/TestCases.jsx` (`COLUMNS` y `DETAIL_FIELDS` al inicio) |
 | El esquema SQL | `supabase/README.md` y `supabase/migrations/` |

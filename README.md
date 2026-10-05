@@ -22,11 +22,12 @@ prueba en construcción.
 |---|---|
 | React | 19 |
 | Vite | 8 (requiere Node `^20.19` o `≥22.12` — ojo, Node 21 no sirve; probado con Node 24) |
-| Tailwind CSS | v4 — configuración vía `@theme` en `src/index.css`, no `tailwind.config.js` |
+| Tailwind CSS | v4 — configuración vía `@theme` en `src/index.css`. `tailwind.config.js` está vacío y solo existe porque `components.json` (CLI de shadcn) lo referencia |
 | shadcn / Radix | componentes en `src/components/ui/` |
 | @dnd-kit | drag & drop del tablero de bugs |
-| Supabase | `@supabase/supabase-js`, sin autenticación (ver aviso abajo) |
+| Supabase | `@supabase/supabase-js`, sin autenticación real (ver aviso abajo) |
 | react-router-dom | 7 |
+| Despliegue | Vercel (`vercel.json` reescribe todo a `index.html` para el router). Hay que definir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en las variables de entorno del proyecto en Vercel |
 
 ## Puesta en marcha
 
@@ -65,9 +66,9 @@ caso, sigue el orden que indica [supabase/README.md](supabase/README.md).
 
 | Ruta | Pantalla |
 |---|---|
-| `/login` | Login — **mockup**, no valida nada, solo navega a `/backlog` |
-| `/backlog` | Backlog de QA: tabla de Epics con expansión anidada a Features y Bugs |
-| `/bugs` | Tablero de Bugs: 4 columnas, drag & drop para cambiar estado |
+| `/login` | Login — **mockup**, no valida nada, solo navega a `/backlog` (y "Cerrar sesión" solo vuelve aquí) |
+| `/backlog` | Backlog de QA: tabla de Epics con expansión anidada a Features y Bugs, cada nivel con su cabecera de columnas |
+| `/bugs` | Tablero de Bugs: 4 columnas, drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) |
 | `/casos-de-prueba` | Casos de Prueba — en construcción |
 | `/notes` | Notas del equipo |
 
@@ -87,7 +88,9 @@ src/
   pages/              Backlog · BugBoard · TestCases · Notes · Login
   components/
     backlog/          Jerarquía Epic→Feature→Bug, formularios y comentarios
-      TreeRow.jsx     Rejilla, etiqueta y acciones compartidas del árbol
+      TreeRow.jsx     Etiqueta, cabecera de columnas y acciones compartidas del árbol
+      treeLayout.js   Anchos de columna y sangrías del árbol (ver Convenciones)
+      CreatedAtField  Selector de fecha de creación de features y bugs
     notes/            Tarjetas y formulario de notas
     ui/               shadcn + componentes propios compartidos
   context/            ToastContext · ThemeContext
@@ -116,9 +119,30 @@ inline. Antes se interpolaba `var(--status-${id})`, lo que fallaba en silencio (
 transparente) si faltaba un token.
 
 **El árbol del backlog comparte una sola rejilla.** Features y bugs usan `TREE_GRID`
-(`src/components/backlog/TreeRow.jsx`) y **la sangría se aplica solo a la etiqueta**,
+(`src/components/backlog/treeLayout.js`) y **la sangría se aplica solo a la etiqueta**,
 nunca al contenedor de la fila. Si se indenta el contenedor, se desplazan también las
-columnas de estado, severidad y acciones, y el árbol deja de leerse alineado.
+columnas de la derecha, y el árbol deja de leerse alineado.
+
+**El estado de cada nivel queda justo debajo del estado del Epic.** Las tres columnas
+de la derecha de `TREE_GRID` (Estado, Fecha, Acciones) miden lo mismo que las de la
+tabla del Epic en `Backlog.jsx`, que usa `table-fixed` para conservarlas. Si cambias el
+ancho de una, cámbialo en `treeLayout.js` (`TREE_*_WIDTH`) y ambos lados se actualizan.
+Las filas anidadas terminan 13px antes del borde (padding de la lista + borde de la
+tarjeta); `TREE_EDGE_INSET` lo compensa. Si cambias ese padding o borde, actualiza la constante.
+
+**Los bugs se registran en el Backlog y se clasifican en el Tablero.** El Backlog solo
+muestra y edita título, descripción y fecha de creación de un bug; el estado, la severidad
+y la prioridad se ven y cambian únicamente desde el Tablero de Bugs. `BugFormSheet` tiene
+un modo para cada sitio (`mode="backlog"` y `mode="board"`). No vuelvas a poner esos
+controles en el Backlog: la idea es que cada opción viva en un solo lugar. Cada bug del
+Backlog tiene un enlace "Ver en el tablero" (`/bugs?bug=<id>`) que resalta su tarjeta.
+
+**Las fechas de creación son editables.** Features y bugs permiten fijar su fecha de
+creación al crearlos o editarlos (`CreatedAtField`). Se guarda en la propia columna
+`created_at`; no hay columna aparte. Una fecha distinta de hoy se guarda a las 12:00
+locales para que el huso horario no la corra de día (`dateInputToTimestamp` en
+`src/lib/format.js`). No se admiten fechas futuras. Los features y bugs se ordenan por
+`created_at`, así que cambiar la fecha también cambia su posición en la lista.
 
 **Las acciones de fila siguen siempre la misma gramática**: las constructivas (agregar,
 notas) van con texto a la vista; editar y eliminar viven en el menú de tres puntos.

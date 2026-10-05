@@ -6,24 +6,35 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
+import { TREE_GRID, TREE_COL, TREE_EDGE_INSET } from './treeLayout';
 
 /**
- * Rejilla compartida por todos los niveles del árbol.
- *
- * La sangría se aplica SOLO a la etiqueta (prop `indent` de TreeLabel), nunca al
- * contenedor de la fila: así las columnas de estado, severidad y acciones quedan
- * alineadas verticalmente en todo el árbol pese a la jerarquía.
+ * Cabecera de columnas: `cells` es `[{ label, column, span?, align? }]`.
+ * `outsideCard` reserva el 1px de borde de las tarjetas de feature, para que la
+ * cabecera de la lista de features alinee con las filas que van dentro de ellas.
  */
-export const TREE_GRID = 'minmax(0,1fr) 170px 90px 90px 215px';
-
-/** Sangría de cada nivel de anidación, en píxeles. */
-export const TREE_INDENT = 26;
-
-/**
- * Desplazamiento del ícono dentro de una fila: ancho del chevron (20px) más el
- * gap (8px). Las filas sin chevron lo replican como padding para alinearse.
- */
-export const TREE_ICON_OFFSET = 28;
+export function TreeHeader({ cells, indent = 0, outsideCard = false }) {
+    return (
+        <div
+            className={`grid items-center py-2 ${outsideCard ? 'border border-transparent' : ''}`}
+            style={{ gridTemplateColumns: TREE_GRID }}
+        >
+            {cells.map(({ label, column, span = 1, align }) => (
+                <span
+                    key={label}
+                    className={`text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 truncate ${align === 'center' ? 'text-center' : ''}`}
+                    style={{
+                        gridColumn: `${column} / span ${span}`,
+                        ...(column === TREE_COL.label && { paddingLeft: indent }),
+                        ...(column === TREE_COL.status && { paddingLeft: 8 }),
+                    }}
+                >
+                    {label}
+                </span>
+            ))}
+        </div>
+    );
+}
 
 export function TreeLabel({
     indent = 0,
@@ -78,12 +89,17 @@ export function TreeLabel({
  */
 export function RowActions({
     onComment, commentCount = 0, onEdit, onDelete, entityLabel,
-    onAdd, addLabel, addText,
+    onAdd, addLabel, addText, nested = false,
 }) {
     const textButton = 'flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-bold transition-colors';
 
+    // En la tabla del Epic los botones terminan a 16px del borde (celda p-2 + pr-2);
+    // las filas anidadas ya empiezan TREE_EDGE_INSET px dentro, así que restan eso.
     return (
-        <div className="flex items-center justify-end gap-1 pr-2">
+        <div
+            className="flex items-center justify-end gap-1"
+            style={{ paddingRight: nested ? 16 - TREE_EDGE_INSET : 8 }}
+        >
             {onAdd && (
                 <button
                     onClick={onAdd}

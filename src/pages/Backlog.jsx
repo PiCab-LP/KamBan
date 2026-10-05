@@ -23,6 +23,9 @@ import { StatusDropdown } from '../components/backlog/StatusDropdown';
 import { EpicFormModal } from '../components/backlog/EpicFormModal';
 import { EpicExpandedDetail } from '../components/backlog/EpicExpandedDetail';
 import { RowActions } from '../components/backlog/TreeRow';
+import {
+    TREE_STATUS_WIDTH, TREE_DATE_WIDTH, TREE_ACTIONS_WIDTH,
+} from '../components/backlog/treeLayout';
 import '../App.css';
 
 const ITEMS_PER_PAGE = 10;
@@ -174,19 +177,31 @@ export default function Backlog() {
                     <Card className="border-border/40 overflow-hidden bg-card shadow-lg shadow-black/5 rounded-2xl p-0">
                         <CardContent className="p-0 bg-muted">
                             <div className="overflow-x-auto">
-                                <Table>
+                                {/* Layout fijo: Estado/Fecha/Acciones conservan el ancho de TREE_*_WIDTH
+                                    y el nombre absorbe el resto. Las filas anidadas (TREE_GRID) usan esos
+                                    mismos anchos para alinear sus estados bajo el del Epic. */}
+                                <Table className="table-fixed min-w-[1000px]">
                                     <TableHeader className="bg-muted border-b-2 border-border">
                                         <TableRow className="hover:bg-transparent border-none">
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 pl-8 h-16 w-[420px]">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 pl-8 h-16">
                                                 Epic
                                             </TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px]">
+                                            <TableHead
+                                                className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16"
+                                                style={{ width: TREE_STATUS_WIDTH }}
+                                            >
                                                 Estado
                                             </TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px] text-center">
+                                            <TableHead
+                                                className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 text-center"
+                                                style={{ width: TREE_DATE_WIDTH }}
+                                            >
                                                 Fecha de Creación
                                             </TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[215px] text-center">
+                                            <TableHead
+                                                className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 text-center"
+                                                style={{ width: TREE_ACTIONS_WIDTH }}
+                                            >
                                                 Acciones
                                             </TableHead>
                                         </TableRow>

@@ -4,11 +4,15 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useCommentCounts } from '@/hooks/useComments';
 import { ENTITY_STATUS } from '@/lib/domain';
+import { formatLocalDate } from '@/lib/format';
 import { StatusDropdown } from './StatusDropdown';
 import { FeatureFormModal } from './FeatureFormModal';
 import { FeatureBugList } from './FeatureBugList';
 import { CommentsPanel } from './CommentsPanel';
-import { TREE_GRID, TreeLabel, RowActions } from './TreeRow';
+import { TreeLabel, TreeHeader, RowActions } from './TreeRow';
+import {
+    TREE_GRID, TREE_COL, TREE_LIST_PADDING, FEATURE_INDENT, FEATURE_TITLE_OFFSET,
+} from './treeLayout';
 
 export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, onFeatureFormOpened }) {
     const {
@@ -92,7 +96,18 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
             ) : (
                 // Cada feature es una tarjeta propia: la separación entre bloques es
                 // lo que hace legible la jerarquía, más que la sangría sola.
-                <div className="p-3 space-y-2.5">
+                <div className="space-y-2.5" style={{ padding: TREE_LIST_PADDING }}>
+                    <TreeHeader
+                        outsideCard
+                        indent={FEATURE_TITLE_OFFSET}
+                        cells={[
+                            { label: 'Feature', column: TREE_COL.label },
+                            { label: 'Bugs', column: TREE_COL.first, span: 2 },
+                            { label: 'Estado', column: TREE_COL.status },
+                            { label: 'Fecha de creación', column: TREE_COL.date, align: 'center' },
+                            { label: 'Acciones', column: TREE_COL.actions, align: 'center' },
+                        ]}
+                    />
                     {features.map((feature) => {
                         const isExpanded = expandedIds.has(feature.id);
                         const bugCount = feature.bugs?.[0]?.count ?? 0;
@@ -103,11 +118,11 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                                 className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden"
                             >
                                 <div
-                                    className="grid items-center hover:bg-muted/20 transition-colors"
+                                    className={`grid items-center transition-colors ${isExpanded ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
                                     style={{ gridTemplateColumns: TREE_GRID }}
                                 >
                                     <TreeLabel
-                                        indent={10}
+                                        indent={FEATURE_INDENT}
                                         expandable
                                         expanded={isExpanded}
                                         onToggle={() => toggle(feature.id)}
@@ -118,19 +133,30 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                                         subtitle={feature.description}
                                     />
 
-                                    <StatusDropdown
-                                        value={feature.status}
-                                        map={ENTITY_STATUS}
-                                        onChange={(status) => updateFeatureStatus(feature.id, status)}
-                                    />
-
-                                    <span className="text-[11px] font-bold text-muted-foreground/70 tabular-nums">
+                                    <span
+                                        className="text-[11px] font-bold text-muted-foreground/70 tabular-nums"
+                                        style={{ gridColumn: `${TREE_COL.first} / span 2` }}
+                                    >
                                         {bugCount} {bugCount === 1 ? 'bug' : 'bugs'}
                                     </span>
 
-                                    <span />
+                                    <div className="pl-2" style={{ gridColumn: TREE_COL.status }}>
+                                        <StatusDropdown
+                                            value={feature.status}
+                                            map={ENTITY_STATUS}
+                                            onChange={(status) => updateFeatureStatus(feature.id, status)}
+                                        />
+                                    </div>
+
+                                    <span
+                                        className="text-center text-xs font-medium text-muted-foreground/80"
+                                        style={{ gridColumn: TREE_COL.date }}
+                                    >
+                                        {formatLocalDate(feature.created_at)}
+                                    </span>
 
                                     <RowActions
+                                        nested
                                         entityLabel="feature"
                                         addLabel="Agregar bug"
                                         addText="Bug"

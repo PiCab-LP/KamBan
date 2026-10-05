@@ -10,7 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ENTITY_STATUS } from '@/lib/domain';
+import { toDateInputValue, dateInputToTimestamp } from '@/lib/format';
 import { StatusPills } from './StatusPills';
+import { CreatedAtField } from './CreatedAtField';
 
 const MAX_DESCRIPTION = 2000;
 
@@ -19,6 +21,7 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState('pendiente');
+    const [createdAt, setCreatedAt] = useState('');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
@@ -27,6 +30,7 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
         setName(feature?.name || '');
         setDescription(feature?.description || '');
         setStatus(feature?.status || 'pendiente');
+        setCreatedAt(toDateInputValue(feature?.created_at));
         setError('');
     }, [open, feature]);
 
@@ -42,6 +46,7 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
             name: trimmed,
             description: description.trim() || null,
             status,
+            created_at: dateInputToTimestamp(createdAt, feature?.created_at),
         });
         setSaving(false);
 
@@ -99,6 +104,13 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
                         map={ENTITY_STATUS}
                         value={status}
                         onChange={setStatus}
+                        disabled={saving}
+                    />
+
+                    <CreatedAtField
+                        id="feature-created-at"
+                        value={createdAt}
+                        onChange={setCreatedAt}
                         disabled={saving}
                     />
 

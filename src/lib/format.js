@@ -25,6 +25,31 @@ export function getAvatarColor(name) {
     return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
+/** Fecha local de hoy (o de `dateVal`) como `YYYY-MM-DD`, el formato de <input type="date">. */
+export function toDateInputValue(dateVal = new Date()) {
+    const date = new Date(dateVal);
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * Convierte el valor de un <input type="date"> en el `created_at` a guardar.
+ *
+ * - Si el día no cambió respecto a `original`, devuelve `original` intacto para
+ *   no pisar la hora real con una inventada.
+ * - Si es hoy, usa el instante actual.
+ * - Cualquier otro día se guarda a las 12:00 locales, lejos de la medianoche,
+ *   para que un desfase de huso horario no lo corra al día vecino.
+ */
+export function dateInputToTimestamp(value, original = null) {
+    if (!value) return original ?? new Date().toISOString();
+    if (original && toDateInputValue(original) === value) return original;
+    if (value === toDateInputValue()) return new Date().toISOString();
+    const [year, month, day] = value.split('-').map(Number);
+    return new Date(year, month - 1, day, 12).toISOString();
+}
+
 /**
  * Las fechas `YYYY-MM-DD` se parsean con barras en vez de guiones: con guiones
  * el navegador las interpreta como UTC y el día se corre uno hacia atrás en

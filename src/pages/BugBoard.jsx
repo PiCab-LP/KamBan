@@ -1,5 +1,6 @@
 import { useEffect, useState, Fragment } from 'react';
 import { createPortal } from 'react-dom';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { GripVertical, Bug as BugIcon } from 'lucide-react';
 import {
@@ -23,7 +24,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useBugs } from '../hooks/useBugs';
-import { BUG_COLUMNS, BUG_STATUS, BUG_SEVERITY } from '../lib/domain';
+import { BUG_COLUMNS, BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY } from '../lib/domain';
 import { StatusBadge, ReopenedBadge } from '../components/ui/StatusBadge';
 import { LoadingSkeleton } from '../components/ui/StatCard';
 import { BugFormSheet } from '../components/backlog/BugFormSheet';
@@ -77,7 +78,7 @@ function DroppableColumn({ id, title, description, count, children }) {
   );
 }
 
-const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit }) => {
+const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false }) => {
   const featureName = bug.features?.name;
   const epicName = bug.features?.epics?.name;
   const severityColor = BUG_SEVERITY[bug.severity]?.color || 'var(--primary)';
@@ -87,6 +88,7 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit }) => {
       className={`
         border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full group
         ${isOverlay ? 'ring-2 ring-primary/40 shadow-2xl opacity-95' : 'hover:border-primary/30 hover:shadow-lg hover:shadow-black/5'}
+        ${highlighted ? 'ring-2 ring-primary shadow-xl shadow-primary/20 scale-[1.03]' : ''}
       `}
     >
       <div className="flex items-stretch min-h-[48px]">
@@ -115,6 +117,7 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit }) => {
             </h4>
             <div className="flex items-center gap-1.5 flex-wrap">
               <StatusBadge value={bug.severity} map={BUG_SEVERITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
+              <StatusBadge value={bug.priority} map={BUG_PRIORITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
               {bug.is_reopened && <ReopenedBadge />}
             </div>
             {featureName && (
@@ -129,7 +132,7 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit }) => {
   );
 };
 
-function SortableCard({ bug, onEdit }) {
+function SortableCard({ bug, onEdit, highlighted }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bug.id });
 
   const style = {
@@ -139,8 +142,14 @@ function SortableCard({ bug, onEdit }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="group">
-      <BugCard bug={bug} onEdit={onEdit} dragHandleProps={{ ...attributes, ...listeners }} isOverlay={false} />
+    <div ref={setNodeRef} style={style} className="group" data-bug-id={bug.id}>
+      <BugCard
+        bug={bug}
+        onEdit={onEdit}
+        dragHandleProps={{ ...attributes, ...listeners }}
+        isOverlay={false}
+        highlighted={highlighted}
+      />
     </div>
   );
 }
@@ -151,6 +160,33 @@ export default function BugBoard() {
   const [activeId, setActiveId] = useState(null);
   const [editingBug, setEditingBug] = useState(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [highlightedId, setHighlightedId] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const targetBugId = searchParams.get('bug');
+
+  // Llegada desde "Ver en el tablero" del Backlog (/bugs?bug=<id>): centra la
+  // tarjeta, la resalta unos segundos y limpia el parámetro para que recargar
+  // la página no vuelva a resaltarla.
+  useEffect(() => {
+    if (!targetBugId || loading) return;
+
+    // `items` se llena un render después de `bugs`: hasta entonces la tarjeta no existe.
+    const exists = bugs.some((b) => b.id === targetBugId);
+    if (exists && !items.some((b) => b.id === targetBugId)) return;
+
+    const card = document.querySelector(`[data-bug-id="${targetBugId}"]`);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      setHighlightedId(targetBugId);
+    }
+    setSearchParams({}, { replace: true });
+  }, [targetBugId, loading, bugs, items, setSearchParams]);
+
+  useEffect(() => {
+    if (!highlightedId) return undefined;
+    const timer = setTimeout(() => setHighlightedId(null), 3500);
+    return () => clearTimeout(timer);
+  }, [highlightedId]);
 
   // El orden visual lo manda `position`; durante el drag manda el orden del array.
   useEffect(() => {
@@ -242,7 +278,7 @@ export default function BugBoard() {
         <div>
           <h1 className="text-[24px] font-bold text-foreground tracking-tight">Tablero de Bugs</h1>
           <p className="text-[13.5px] text-muted-foreground mt-1">
-            Arrastra un bug para cambiar su estado. Los bugs se registran desde el Backlog de QA.
+            Arrastra un bug para cambiar su estado, o ábrelo para definir su severidad y prioridad. Los bugs se registran desde el Backlog de QA.
           </p>
         </div>
       </div>
@@ -268,7 +304,7 @@ export default function BugBoard() {
                 >
                   <SortableContext items={columnBugs.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                     {columnBugs.map((bug) => (
-                      <SortableCard key={bug.id} bug={bug} onEdit={handleEdit} />
+                      <SortableCard key={bug.id} bug={bug} onEdit={handleEdit} highlighted={bug.id === highlightedId} />
                     ))}
                   </SortableContext>
                 </DroppableColumn>
@@ -299,6 +335,7 @@ export default function BugBoard() {
         open={isSheetOpen}
         onClose={() => setIsSheetOpen(false)}
         bug={editingBug}
+        mode="board"
         onSave={(data) => updateBug(editingBug.id, data)}
       />
     </div>

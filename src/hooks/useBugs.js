@@ -67,10 +67,24 @@ export function useBugs({ featureId = null } = {}) {
     };
 
     const updateBug = async (id, bugData) => {
+        const bug = bugs.find((b) => b.id === id);
+        const payload = { ...bugData };
+        let reopening = false;
+
+        // Cambiar el estado desde el formulario debe comportarse como arrastrar o usar
+        // el dropdown: marcar "Reabierto" y caer al final de la columna destino.
+        if (bug && payload.status && payload.status !== bug.status) {
+            reopening = shouldFlagReopen(bug.status, payload.status);
+            if (reopening) payload.is_reopened = true;
+            if (isBoardMode) {
+                payload.position = positionAtEnd(bugs.filter((b) => b.status === payload.status));
+            }
+        }
+
         try {
-            const { error } = await supabase.from('bugs').update(bugData).eq('id', id);
+            const { error } = await supabase.from('bugs').update(payload).eq('id', id);
             if (error) throw error;
-            showToast('Bug actualizado', 'success');
+            showToast(reopening ? 'Bug reabierto' : 'Bug actualizado', reopening ? 'warning' : 'success');
             await fetchBugs();
             return { success: true };
         } catch (err) {
@@ -80,34 +94,8 @@ export function useBugs({ featureId = null } = {}) {
     };
 
     /**
-     * Cambio de estado desde el dropdown de la tabla. El tablero usa `moveBug`,
-     * pero ambos pasan por `shouldFlagReopen` para no discrepar.
-     */
-    const updateBugStatus = async (id, status) => {
-        const bug = bugs.find((b) => b.id === id);
-        if (!bug) return { success: false, error: 'Bug no encontrado' };
-
-        const reopening = shouldFlagReopen(bug.status, status);
-        const payload = reopening ? { status, is_reopened: true } : { status };
-        const previous = bugs;
-
-        setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, ...payload } : b)));
-
-        try {
-            const { error } = await supabase.from('bugs').update(payload).eq('id', id);
-            if (error) throw error;
-            if (reopening) showToast('Bug reabierto', 'warning');
-            return { success: true };
-        } catch (err) {
-            console.error('Error updating bug status:', err.message);
-            setBugs(previous);
-            showToast('No se pudo actualizar el estado', 'error');
-            return { success: false, error: err.message };
-        }
-    };
-
-    /**
-     * Drag en el tablero: un UPDATE de una sola fila gracias a las posiciones
+     * Drag en el tablero (el formulario de clasificación usa `updateBug`; ambos pasan por
+     * `shouldFlagReopen` para no discrepar): un UPDATE de una sola fila gracias a las posiciones
      * fraccionarias. `prevItem`/`nextItem` son los vecinos en el destino.
      */
     const moveBug = async (id, status, prevItem, nextItem) => {
@@ -155,7 +143,6 @@ export function useBugs({ featureId = null } = {}) {
         fetchBugs,
         createBug,
         updateBug,
-        updateBugStatus,
         moveBug,
         deleteBug,
     };
