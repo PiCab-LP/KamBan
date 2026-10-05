@@ -9,16 +9,11 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-} from '@/components/ui/dropdown-menu';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { StatCard, LoadingSkeleton } from '@/components/ui/StatCard';
 import {
     Layers, GitBranch, Bug as BugIcon, AlertCircle, Search, Plus,
-    ChevronLeft, ChevronRight, ChevronDown, ChevronUp, MoreVertical, Pencil, Trash2,
+    ChevronLeft, ChevronRight, ChevronDown,
 } from 'lucide-react';
 import { useEpics } from '../hooks/useEpics';
 import { useBacklogStats } from '../hooks/useBacklogStats';
@@ -27,6 +22,7 @@ import { formatLocalDate, getInitials, getAvatarColor } from '../lib/format';
 import { StatusDropdown } from '../components/backlog/StatusDropdown';
 import { EpicFormModal } from '../components/backlog/EpicFormModal';
 import { EpicExpandedDetail } from '../components/backlog/EpicExpandedDetail';
+import { RowActions } from '../components/backlog/TreeRow';
 import '../App.css';
 
 const ITEMS_PER_PAGE = 10;
@@ -44,6 +40,7 @@ export default function Backlog() {
     const [formEpic, setFormEpic] = useState(null);
     const [formOpen, setFormOpen] = useState(false);
     const [deletingEpic, setDeletingEpic] = useState(null);
+    const [addFeatureFor, setAddFeatureFor] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [childCount, setChildCount] = useState(0);
 
@@ -70,6 +67,13 @@ export default function Backlog() {
     const goToPage = (page) => {
         setCurrentPage(page);
         setExpandedEpicIds(new Set());
+    };
+
+    // Agregar un feature exige que el Epic esté desplegado: el formulario vive
+    // en EpicExpandedDetail, junto a la mutación.
+    const handleAddFeature = (epicId) => {
+        setExpandedEpicIds((prev) => new Set(prev).add(epicId));
+        setAddFeatureFor(epicId);
     };
 
     const handleExpandToggle = (epicId) => {
@@ -173,16 +177,16 @@ export default function Backlog() {
                                 <Table>
                                     <TableHeader className="bg-muted border-b-2 border-border">
                                         <TableRow className="hover:bg-transparent border-none">
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 pl-8 h-16 w-[480px]">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 pl-8 h-16 w-[420px]">
                                                 Epic
                                             </TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[200px]">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px]">
                                                 Estado
                                             </TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[200px] text-center">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px] text-center">
                                                 Fecha de Creación
                                             </TableHead>
-                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[180px] text-center">
+                                            <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 w-[215px] text-center">
                                                 Acciones
                                             </TableHead>
                                         </TableRow>
@@ -196,21 +200,34 @@ export default function Backlog() {
                                                         className={`border-b border-border/60 animate-kanban-fade-in group transition-colors ${isExpanded ? 'bg-muted/10' : 'hover:bg-muted/10'}`}
                                                         style={{ animationDelay: `${150 + index * 30}ms` }}
                                                     >
-                                                        <TableCell className="pl-8 py-5">
-                                                            <button
-                                                                onClick={() => handleExpandToggle(epic.id)}
-                                                                className="flex items-center gap-3.5 text-left"
-                                                            >
-                                                                <div
-                                                                    className="flex items-center justify-center w-9 h-9 rounded-xl text-white text-[10px] font-black shadow-sm shrink-0"
-                                                                    style={{ backgroundColor: getAvatarColor(epic.name) }}
+                                                        <TableCell className="pl-5 py-5">
+                                                            <div className="flex items-center gap-2.5">
+                                                                {/* El control de desplegar abre el árbol, así que va
+                                                                    a la izquierda del ícono, no en Acciones. */}
+                                                                <button
+                                                                    onClick={() => handleExpandToggle(epic.id)}
+                                                                    title={isExpanded ? 'Ocultar features' : 'Ver features'}
+                                                                    className={`flex items-center justify-center w-6 h-6 shrink-0 rounded-lg transition-colors ${isExpanded ? 'text-primary bg-primary/10' : 'text-muted-foreground/50 hover:text-primary hover:bg-primary/10'}`}
                                                                 >
-                                                                    {getInitials(epic.name)}
-                                                                </div>
-                                                                <span className="text-sm font-bold text-foreground">
-                                                                    {epic.name}
-                                                                </span>
-                                                            </button>
+                                                                    {isExpanded
+                                                                        ? <ChevronDown size={16} strokeWidth={2.5} />
+                                                                        : <ChevronRight size={16} strokeWidth={2.5} />}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleExpandToggle(epic.id)}
+                                                                    className="flex items-center gap-3 text-left min-w-0"
+                                                                >
+                                                                    <div
+                                                                        className="flex items-center justify-center w-9 h-9 rounded-xl text-white text-[10px] font-black shadow-sm shrink-0"
+                                                                        style={{ backgroundColor: getAvatarColor(epic.name) }}
+                                                                    >
+                                                                        {getInitials(epic.name)}
+                                                                    </div>
+                                                                    <span className="text-sm font-bold text-foreground truncate">
+                                                                        {epic.name}
+                                                                    </span>
+                                                                </button>
+                                                            </div>
                                                         </TableCell>
                                                         <TableCell className="py-5">
                                                             <StatusDropdown
@@ -223,42 +240,14 @@ export default function Backlog() {
                                                             {formatLocalDate(epic.created_at)}
                                                         </TableCell>
                                                         <TableCell className="py-5">
-                                                            <div className="flex items-center justify-center gap-1">
-                                                                <Button
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    className={`h-9 px-3 gap-1.5 rounded-xl transition-all text-[11px] font-black uppercase tracking-wider hover:scale-105 active:scale-95 ${isExpanded ? 'text-primary bg-primary/5' : 'text-muted-foreground hover:text-primary hover:bg-primary/5'}`}
-                                                                    onClick={() => handleExpandToggle(epic.id)}
-                                                                >
-                                                                    {isExpanded
-                                                                        ? <><ChevronUp size={16} /><span>Ocultar</span></>
-                                                                        : <><ChevronDown size={16} /><span>Features</span></>}
-                                                                </Button>
-                                                                <DropdownMenu>
-                                                                    <DropdownMenuTrigger asChild>
-                                                                        <button className="p-2 rounded-md text-muted-foreground/40 hover:text-muted-foreground/80 hover:bg-muted/40 transition-colors">
-                                                                            <MoreVertical size={16} strokeWidth={2} />
-                                                                        </button>
-                                                                    </DropdownMenuTrigger>
-                                                                    <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border-border/40">
-                                                                        <button
-                                                                            onClick={() => { setFormEpic(epic); setFormOpen(true); }}
-                                                                            className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs font-semibold hover:bg-muted/60 rounded-md transition-colors cursor-pointer"
-                                                                        >
-                                                                            <Pencil size={13} strokeWidth={2.5} />
-                                                                            Editar Epic
-                                                                        </button>
-                                                                        <div className="h-px bg-border/40 my-1" />
-                                                                        <button
-                                                                            onClick={() => setDeletingEpic(epic)}
-                                                                            className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer"
-                                                                        >
-                                                                            <Trash2 size={13} strokeWidth={2.5} />
-                                                                            Eliminar
-                                                                        </button>
-                                                                    </DropdownMenuContent>
-                                                                </DropdownMenu>
-                                                            </div>
+                                                            <RowActions
+                                                                entityLabel="epic"
+                                                                addLabel="Agregar feature"
+                                                                addText="Feature"
+                                                                onAdd={() => handleAddFeature(epic.id)}
+                                                                onEdit={() => { setFormEpic(epic); setFormOpen(true); }}
+                                                                onDelete={() => setDeletingEpic(epic)}
+                                                            />
                                                         </TableCell>
                                                     </TableRow>
                                                     {isExpanded && (
@@ -266,6 +255,8 @@ export default function Backlog() {
                                                             <TableCell colSpan={COLUMN_COUNT} className="p-0 border-b border-border/60">
                                                                 <EpicExpandedDetail
                                                                     epicId={epic.id}
+                                                                    openFeatureForm={addFeatureFor === epic.id}
+                                                                    onFeatureFormOpened={() => setAddFeatureFor(null)}
                                                                     onContentChange={() => setChildCount((n) => n + 1)}
                                                                 />
                                                             </TableCell>

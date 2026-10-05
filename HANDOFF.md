@@ -1,6 +1,10 @@
 # Handoff — QANBAN
 
-Estado al **5 de octubre de 2026**. Último commit: `fdd3582 feat: change kamban to qanban`.
+Estado al **5 de octubre de 2026**. Último commit: `51caf1b feat: added documentation of the project`.
+
+> ⚠️ El rediseño del backlog como árbol de carpetas **está sin commitear**: hay cambios en
+> `Backlog.jsx`, `EpicExpandedDetail.jsx`, `FeatureBugList.jsx` y el archivo nuevo
+> `TreeRow.jsx`. Todo compila y pasa lint.
 
 Para montar el entorno, ver [README.md](README.md). Este documento cubre **en qué punto
 está el trabajo, qué quedó pendiente y por qué se tomaron ciertas decisiones**.
@@ -26,14 +30,19 @@ No se migraron datos.
 - La barra de progreso, el estado derivado, las fechas de onboarding/entrega y el confetti.
 - Los archivos `Dashboard.jsx`, `Kanban.jsx`, `CompanyExpandedDetail.jsx` y `TaskModal.jsx`.
 
-### Lo que funciona hoy (verificado en navegador)
+### Lo que funciona hoy
+
+Las migraciones **ya están aplicadas** en el proyecto remoto de Supabase, y estos flujos se
+verificaron de punta a punta contra la base real:
 
 - Crear, editar, borrar y cambiar estado de Epics, Features y Bugs.
-- Expansión anidada de 3 niveles en el Backlog.
-- **Marcado automático de "Reabierto"**: al mover un bug de `resuelto`/`cerrado` de vuelta
-  a `nuevo`/`en_progreso` se marca solo, con su etiqueta roja y un toast.
+- Navegación en árbol de carpetas: Epic → Feature → Bugs, desplegable por nivel.
+- **Marcado automático de "Reabierto"** desde el dropdown de estado: al mover un bug de
+  `resuelto`/`cerrado` a `nuevo`/`en_progreso` se marca solo, con etiqueta roja y toast.
+- Agregar feature desde la fila del Epic y agregar bug desde la fila del Feature, incluso
+  con el padre colapsado (se despliega solo).
 - Comentarios en Features y en Bugs, con hilos y contadores independientes.
-- Métricas del backlog y contador de bugs por feature.
+- Métricas del backlog y contador de bugs por feature (se refresca al crear o borrar bugs).
 - Notas vinculables a Epic, Feature o Bug (o globales).
 - Modo claro/oscuro, instantáneo.
 
@@ -90,19 +99,13 @@ Hay que probarlo a mano. Lo que importa comprobar:
   (la regla vive en `shouldFlagReopen`, y la llaman tanto el dropdown de la tabla como
   `handleDragEnd`; si solo funcionara en uno, discreparían).
 
-### 4. Datos de prueba en la base
-
-Quedaron dos epics de prueba: **"Prueba"** (creado al verificar la migración) y
-**"Autenticación de usuarios"** (con un feature "Login con Google" y un bug marcado como
-reabierto). Borrarlos cuando estorben.
-
-### 5. Dependencias huérfanas
+### 4. Dependencias huérfanas
 
 `canvas-confetti` y `@fontsource-variable/inter` siguen en `package.json` pero ya no se
 usan en `src/`. El confetti se disparaba desde la lógica de estado derivado, que se
 eliminó. Se pueden desinstalar.
 
-### 6. Sin autenticación
+### 5. Sin autenticación
 
 Ver el aviso del [README](README.md#seguridad). No es un olvido, es una decisión
 consciente con su checklist de salida documentado en el SQL de RLS.
@@ -146,6 +149,36 @@ embebidas en el componente, en 865 líneas. Ahora los componentes son presentaci
 **En el Backlog no hay drag.** Se evaluó y el usuario eligió ordenar por fecha de creación.
 Por eso `position` solo existe en `bugs`.
 
+### El árbol del backlog
+
+La pantalla pasó por varias iteraciones hasta llegar a esta forma. Lo que conviene saber
+antes de volver a moverla:
+
+**Una sola rejilla (`TREE_GRID`) para features y bugs, y la sangría solo en la etiqueta.**
+Esto es lo más importante del archivo `TreeRow.jsx`. Al principio la sangría se aplicaba al
+contenedor de la fila, lo que desplazaba también las columnas de estado, severidad y
+acciones: cada nivel quedaba descuadrado respecto al de arriba y el árbol se leía
+desordenado. Indentando solo la etiqueta, todas las columnas de la derecha quedan a plomo.
+
+**La jerarquía se marca por contención, no solo por sangría.** Cada feature es una tarjeta
+con su borde y sombra, separada de las demás; el bloque desplegado del Epic lleva una
+franja de acento a la izquierda. Son cuatro fondos escalonados (Epic → bloque → tarjeta de
+feature → zona de bugs) y eso es lo que da la sensación de profundidad.
+
+**No hay carpeta "Bugs" intermedia.** Existió y se quitó: añadía una fila y un clic por
+feature sin aportar nada, porque el conteo ya está en la columna del feature.
+
+**Los botones de agregar viven en la fila del padre, pero el formulario en el hijo.**
+`+ Feature` está en la fila del Epic y `+ Bug` en la del Feature, mientras que los
+formularios y sus mutaciones viven en `EpicExpandedDetail` y `FeatureBugList`, junto al
+hook que los alimenta (`useFeatures(epicId)` / `useBugs({featureId})`, que solo existen
+cuando el padre está desplegado). Se conectan con una señal por props en vez de duplicar
+la lógica de creación. Efecto secundario deseado: pulsar "+" con el padre colapsado lo
+despliega solo.
+
+**El menú de Radix no responde a clics programáticos**, solo a punteros reales. Si estás
+automatizando pruebas sobre el menú de tres puntos, esto te va a despistar.
+
 ### Detalles de layout que parecen arbitrarios pero no lo son
 
 **El detalle expandido de Casos de Prueba es `sticky left-0`.** La celda abarca los 1.900px
@@ -172,6 +205,7 @@ cada píxel cuenta.
 | El dominio (estados, colores, severidades) | `src/lib/domain.js` |
 | Cualquier consulta a la base | `src/hooks/` — el patrón está en `useNotes.js` |
 | La jerarquía del backlog | `src/pages/Backlog.jsx` → `EpicExpandedDetail` → `FeatureBugList` |
+| Rejilla, sangría o acciones del árbol | `src/components/backlog/TreeRow.jsx` |
 | El tablero y su drag | `src/pages/BugBoard.jsx` + `src/lib/position.js` |
 | Casos de Prueba | `src/pages/TestCases.jsx` (`COLUMNS` y `DETAIL_FIELDS` al inicio) |
 | El esquema SQL | `supabase/README.md` y `supabase/migrations/` |

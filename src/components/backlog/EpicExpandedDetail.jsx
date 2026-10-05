@@ -1,14 +1,6 @@
-import { useState } from 'react';
-import {
-    ChevronDown, ChevronRight, Plus, MoreVertical, Pencil, Trash2, MessageSquare, Loader2,
-} from 'lucide-react';
-import {
-    DropdownMenu,
-    DropdownMenuTrigger,
-    DropdownMenuContent,
-} from '@/components/ui/dropdown-menu';
+import { useEffect, useState } from 'react';
+import { Folder, FolderOpen, Loader2 } from 'lucide-react';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
-import { Button } from '@/components/ui/button';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useCommentCounts } from '@/hooks/useComments';
 import { ENTITY_STATUS } from '@/lib/domain';
@@ -16,29 +8,9 @@ import { StatusDropdown } from './StatusDropdown';
 import { FeatureFormModal } from './FeatureFormModal';
 import { FeatureBugList } from './FeatureBugList';
 import { CommentsPanel } from './CommentsPanel';
+import { TREE_GRID, TreeLabel, RowActions } from './TreeRow';
 
-const GRID = '28px 1fr 180px 90px 64px 56px';
-
-function CommentButton({ count, onClick }) {
-    return (
-        <button
-            onClick={onClick}
-            className="w-full h-full flex items-center justify-center text-muted-foreground/40 hover:text-primary hover:bg-primary/5 transition-colors"
-            title="Comentarios"
-        >
-            <div className="relative">
-                <MessageSquare size={16} strokeWidth={2} />
-                {count > 0 && (
-                    <span className="absolute -top-2 -right-2 min-w-[15px] h-[15px] px-0.5 rounded-full bg-primary text-white text-[8px] font-black flex items-center justify-center leading-none">
-                        {count > 9 ? '9+' : count}
-                    </span>
-                )}
-            </div>
-        </button>
-    );
-}
-
-export function EpicExpandedDetail({ epicId, onContentChange }) {
+export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, onFeatureFormOpened }) {
     const {
         features, loading, fetchFeatures,
         createFeature, updateFeature, updateFeatureStatus, deleteFeature,
@@ -52,6 +24,7 @@ export function EpicExpandedDetail({ epicId, onContentChange }) {
     };
 
     const [expandedIds, setExpandedIds] = useState(new Set());
+    const [addBugFor, setAddBugFor] = useState(null);
     const [formFeature, setFormFeature] = useState(null);
     const [formOpen, setFormOpen] = useState(false);
     const [deleting, setDeleting] = useState(null);
@@ -59,6 +32,22 @@ export function EpicExpandedDetail({ epicId, onContentChange }) {
     const [commentTarget, setCommentTarget] = useState(null);
 
     const commentCounts = useCommentCounts('feature', features.map((f) => f.id));
+
+    // El botón de agregar feature vive en la fila del Epic, que está en Backlog.jsx;
+    // el formulario y la mutación viven aquí, junto a useFeatures. Esta señal los une.
+    useEffect(() => {
+        if (!openFeatureForm) return;
+        setFormFeature(null);
+        setFormOpen(true);
+        onFeatureFormOpened?.();
+    }, [openFeatureForm, onFeatureFormOpened]);
+
+    // Mismo patrón que el botón de agregar feature del Epic: el botón vive en la
+    // fila del padre y el formulario en el hijo, junto a su mutación.
+    const handleAddBug = (featureId) => {
+        setExpandedIds((prev) => new Set(prev).add(featureId));
+        setAddBugFor(featureId);
+    };
 
     const toggle = (id) => {
         setExpandedIds((prev) => {
@@ -86,22 +75,8 @@ export function EpicExpandedDetail({ epicId, onContentChange }) {
     };
 
     return (
-        <div className="bg-muted/10 border-t border-border/40">
-            <div className="flex items-center justify-between px-8 py-3 border-b border-border/30">
-                <h3 className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/70">
-                    Features
-                </h3>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setFormFeature(null); setFormOpen(true); }}
-                    className="h-8 px-3 gap-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider text-primary hover:bg-primary/10"
-                >
-                    <Plus size={14} strokeWidth={3} />
-                    Feature
-                </Button>
-            </div>
-
+        // Franja de acento a la izquierda: ata todo el bloque desplegado a su Epic.
+        <div className="bg-muted/40 border-t border-border/60 border-l-[3px] border-l-primary/40">
             {loading ? (
                 <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
                     <Loader2 size={16} className="animate-spin" />
@@ -115,47 +90,33 @@ export function EpicExpandedDetail({ epicId, onContentChange }) {
                     </p>
                 </div>
             ) : (
-                <>
-                    <div
-                        className="grid items-center px-8 py-2 border-b border-border/30 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50"
-                        style={{ gridTemplateColumns: GRID }}
-                    >
-                        <span />
-                        <span>Feature</span>
-                        <span>Estado</span>
-                        <span className="text-center">Bugs</span>
-                        <span className="text-center">Notas</span>
-                        <span />
-                    </div>
-
+                // Cada feature es una tarjeta propia: la separación entre bloques es
+                // lo que hace legible la jerarquía, más que la sangría sola.
+                <div className="p-3 space-y-2.5">
                     {features.map((feature) => {
                         const isExpanded = expandedIds.has(feature.id);
                         const bugCount = feature.bugs?.[0]?.count ?? 0;
 
                         return (
-                            <div key={feature.id} className="border-b border-border/30 last:border-b-0">
+                            <div
+                                key={feature.id}
+                                className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden"
+                            >
                                 <div
-                                    className="grid items-center px-8 min-h-[52px] hover:bg-muted/20 transition-colors"
-                                    style={{ gridTemplateColumns: GRID }}
+                                    className="grid items-center hover:bg-muted/20 transition-colors"
+                                    style={{ gridTemplateColumns: TREE_GRID }}
                                 >
-                                    <button
-                                        onClick={() => toggle(feature.id)}
-                                        className="flex items-center justify-center text-muted-foreground/50 hover:text-primary transition-colors"
-                                        title={isExpanded ? 'Ocultar bugs' : 'Ver bugs'}
-                                    >
-                                        {isExpanded
-                                            ? <ChevronDown size={16} strokeWidth={2.5} />
-                                            : <ChevronRight size={16} strokeWidth={2.5} />}
-                                    </button>
-
-                                    <button onClick={() => toggle(feature.id)} className="text-left pr-4 py-2.5">
-                                        <span className="text-[13px] font-bold text-foreground">{feature.name}</span>
-                                        {feature.description && (
-                                            <span className="block text-[11px] text-muted-foreground/70 truncate">
-                                                {feature.description}
-                                            </span>
-                                        )}
-                                    </button>
+                                    <TreeLabel
+                                        indent={10}
+                                        expandable
+                                        expanded={isExpanded}
+                                        onToggle={() => toggle(feature.id)}
+                                        toggleTitle={isExpanded ? 'Ocultar bugs' : 'Ver bugs'}
+                                        icon={isExpanded ? FolderOpen : Folder}
+                                        iconColor="var(--primary)"
+                                        title={feature.name}
+                                        subtitle={feature.description}
+                                    />
 
                                     <StatusDropdown
                                         value={feature.status}
@@ -163,57 +124,36 @@ export function EpicExpandedDetail({ epicId, onContentChange }) {
                                         onChange={(status) => updateFeatureStatus(feature.id, status)}
                                     />
 
-                                    <span className="text-center text-[11px] font-black text-muted-foreground tabular-nums">
-                                        {bugCount}
+                                    <span className="text-[11px] font-bold text-muted-foreground/70 tabular-nums">
+                                        {bugCount} {bugCount === 1 ? 'bug' : 'bugs'}
                                     </span>
 
-                                    <CommentButton
-                                        count={commentCounts[feature.id] || 0}
-                                        onClick={() => setCommentTarget({ type: 'feature', id: feature.id, title: feature.name })}
-                                    />
+                                    <span />
 
-                                    <div className="flex items-center justify-center">
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <button className="p-2 rounded-md text-muted-foreground/40 hover:text-muted-foreground/80 hover:bg-muted/40 transition-colors">
-                                                    <MoreVertical size={15} strokeWidth={2} />
-                                                </button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-44 rounded-xl shadow-lg border-border/40">
-                                                <button
-                                                    onClick={() => { setFormFeature(feature); setFormOpen(true); }}
-                                                    className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs font-semibold hover:bg-muted/60 rounded-md transition-colors cursor-pointer"
-                                                >
-                                                    <Pencil size={13} strokeWidth={2.5} />
-                                                    Editar feature
-                                                </button>
-                                                <div className="h-px bg-border/40 my-1" />
-                                                <button
-                                                    onClick={() => setDeleting(feature)}
-                                                    className="w-full flex items-center gap-2.5 px-2 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10 rounded-md transition-colors cursor-pointer"
-                                                >
-                                                    <Trash2 size={13} strokeWidth={2.5} />
-                                                    Eliminar
-                                                </button>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </div>
+                                    <RowActions
+                                        entityLabel="feature"
+                                        addLabel="Agregar bug"
+                                        addText="Bug"
+                                        onAdd={() => handleAddBug(feature.id)}
+                                        commentCount={commentCounts[feature.id] || 0}
+                                        onComment={() => setCommentTarget({ type: 'feature', id: feature.id, title: feature.name })}
+                                        onEdit={() => { setFormFeature(feature); setFormOpen(true); }}
+                                        onDelete={() => setDeleting(feature)}
+                                    />
                                 </div>
 
                                 {isExpanded && (
-                                    <div className="pl-14 pr-8 pb-4 bg-muted/20">
-                                        <div className="border-l-2 border-primary/15 pl-4">
-                                            <FeatureBugList
-                                                featureId={feature.id}
-                                                onContentChange={handleBugChange}
-                                            />
-                                        </div>
-                                    </div>
+                                    <FeatureBugList
+                                        featureId={feature.id}
+                                        openBugForm={addBugFor === feature.id}
+                                        onBugFormOpened={() => setAddBugFor(null)}
+                                        onContentChange={handleBugChange}
+                                    />
                                 )}
                             </div>
                         );
                     })}
-                </>
+                </div>
             )}
 
             <FeatureFormModal

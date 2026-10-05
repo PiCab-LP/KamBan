@@ -87,6 +87,7 @@ src/
   pages/              Backlog · BugBoard · TestCases · Notes · Login
   components/
     backlog/          Jerarquía Epic→Feature→Bug, formularios y comentarios
+      TreeRow.jsx     Rejilla, etiqueta y acciones compartidas del árbol
     notes/            Tarjetas y formulario de notas
     ui/               shadcn + componentes propios compartidos
   context/            ToastContext · ThemeContext
@@ -113,6 +114,15 @@ precio de usar `text + CHECK` en vez de enums de Postgres, y está anotado en am
 **Los colores de estado no usan variables CSS.** Se toman de `domain.js` y se aplican
 inline. Antes se interpolaba `var(--status-${id})`, lo que fallaba en silencio (pintaba
 transparente) si faltaba un token.
+
+**El árbol del backlog comparte una sola rejilla.** Features y bugs usan `TREE_GRID`
+(`src/components/backlog/TreeRow.jsx`) y **la sangría se aplica solo a la etiqueta**,
+nunca al contenedor de la fila. Si se indenta el contenedor, se desplazan también las
+columnas de estado, severidad y acciones, y el árbol deja de leerse alineado.
+
+**Las acciones de fila siguen siempre la misma gramática**: las constructivas (agregar,
+notas) van con texto a la vista; editar y eliminar viven en el menú de tres puntos.
+Todas se construyen con `RowActions`.
 
 ## Base de datos
 
