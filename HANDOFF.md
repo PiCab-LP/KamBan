@@ -3,9 +3,9 @@
 Estado al **5 de octubre de 2026**. Último commit: `e0db7e7 feat: some revamps in the backlog`
 (el rediseño del backlog como árbol de carpetas).
 
-> ⚠️ Hay cambios **sin commitear** sobre ese commit: estados alineados bajo el del Epic,
-> cabeceras de columna en features y bugs, fecha de creación editable, y desinstaladas
-> las dependencias huérfanas. Todo compila y pasa lint. Detalle en "Cambios recientes".
+> ⚠️ Hay cambios **sin commitear** sobre ese commit: tabla única para Epic/Feature/Bug,
+> bugs sin estado en el Backlog, fecha de creación editable, y desinstaladas las
+> dependencias huérfanas. Todo compila y pasa lint. Detalle en "Cambios recientes".
 
 Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs con Cloudinary): ver
 [PENDIENTES.md](PENDIENTES.md).
@@ -55,12 +55,19 @@ verificaron de punta a punta contra la base real:
 
 ### Cambios recientes (sin commitear)
 
-- **Estados alineados.** Los estados de Features y Bugs quedan exactamente bajo el estado
-  del Epic (se midió: mismo `x` en los tres niveles). Para lograrlo la tabla del Epic usa
-  `table-fixed` y las filas anidadas comparten sus anchos de columna. Las medidas viven en
+- **Tabla única (experimento reciente).** Antes, los features y bugs eran listas con rejilla
+  propia dentro de una celda del Epic, con cabeceras de columna repetidas y ~40 líneas de
+  cálculo para alinear su Estado con el del Epic. Ahora Epics, Features y Bugs son **filas de
+  la misma tabla**: la primera columna se llama "Elemento", no hay sub-cabeceras, y Estado,
+  Fecha y Acciones se leen de la cabecera principal (mismo `x` en los tres niveles, medido).
+  La jerarquía se marca con sangría, ícono (avatar / carpeta / bug ámbar), fondos escalonados,
+  la franja violeta a la izquierda de las filas anidadas y una línea que cuelga de la carpeta
+  del feature hasta sus bugs (`Connector`). Cada feature muestra su conteo de bugs como
+  chip junto al nombre. Se hizo para *probar cómo queda*; la versión anterior (rejilla
+  `TREE_GRID` con tarjetas por feature) **nunca se commiteó**: solo queda una copia temporal
+  fuera del repo. Si el experimento convence, conviene commitearlo; si no, hay que pedir que
+  se reconstruya la anterior. Los anchos de columna y sangrías viven en
   `src/components/backlog/treeLayout.js`.
-- **Cabeceras de columna.** La lista de features lleva *Feature · Bugs · Estado · Fecha de
-  creación · Acciones*, y la zona de bugs *Bugs (n) · Fecha de creación*.
 - **Los bugs se registran en el Backlog y se clasifican en el Tablero.** Para no manejar
   las mismas opciones en dos sitios, el Backlog ya no muestra ni edita estado, severidad,
   prioridad ni la etiqueta "Reabierto" de un bug; solo título, descripción y fecha. Todo
@@ -71,13 +78,7 @@ verificaron de punta a punta contra la base real:
   El menú de acciones de la fila del bug (Notas, editar, eliminar) sí se queda en el Backlog.
 - **"Ver en el tablero →"** en cada bug del Backlog lleva a `/bugs?bug=<id>`. El Tablero
   centra esa tarjeta, la resalta 3,5 s y limpia el parámetro de la URL para que recargar no
-  la resalte otra vez. El botón ocupa el hueco donde el feature muestra su Estado.
-- **Jerarquía de la zona de bugs.** Antes los bugs parecían una continuación de la fila del
-  feature. Ahora: el feature abierto se tiñe (`bg-primary/5`); la zona de bugs tiene fondo
-  propio y una cabecera "🐞 BUGS · n"; una línea cuelga del ícono de carpeta del feature y
-  cada bug se une a ella con un trazo (`Connector`, alineada con `FEATURE_ICON_CENTER`); y
-  los bugs llevan su propio color (`BUG_ACCENT`, ámbar) frente al violeta de los features.
-  La cabecera ya no repite las etiquetas "Acciones" del feature.
+  la resalte otra vez. El botón ocupa la celda de Estado de la fila del bug.
 - **Mockup de imágenes en el formulario de bug** (`BugImagesPlaceholder`): solo la zona de
   arrastrar y soltar, inerte y marcada "Próximamente". Detalle y decisiones
   pendientes en [PENDIENTES.md](PENDIENTES.md).
@@ -204,24 +205,18 @@ Por eso `position` solo existe en `bugs`.
 La pantalla pasó por varias iteraciones hasta llegar a esta forma. Lo que conviene saber
 antes de volver a moverla:
 
-**Una sola rejilla (`TREE_GRID`) para features y bugs, y la sangría solo en la etiqueta.**
-Esto es lo más importante de `treeLayout.js` / `TreeRow.jsx`. Al principio la sangría se aplicaba al
-contenedor de la fila, lo que desplazaba también las columnas de estado, fecha y
-acciones: cada nivel quedaba descuadrado respecto al de arriba y el árbol se leía
-desordenado. Indentando solo la etiqueta, todas las columnas de la derecha quedan a plomo.
+**Una sola tabla para los tres niveles, y la sangría solo en la primera columna.** Es lo más
+importante de `Backlog.jsx` / `treeLayout.js`. Antes cada nivel tenía su propia rejilla y
+alinear su Estado con el del Epic exigía compensar el padding de la lista y el borde de las
+tarjetas (`TREE_EDGE_INSET`, una constante frágil: si se tocaba ese padding la alineación se
+rompía en silencio). Al volver todo filas de una misma tabla, la alineación es gratis. Al
+añadir columnas, añádelas en la cabecera de `Backlog.jsx` y en las celdas de los tres niveles.
 
-**El Estado de cada nivel cae bajo el del Epic, y eso condiciona el orden de columnas.**
-Estado, Fecha y Acciones tienen el mismo ancho en el Epic y en las filas anidadas; todo lo
-demás (hoy solo el conteo de bugs del feature) va a la *izquierda* del Estado, en el
-espacio de la columna del nombre. Los bugs ya no tienen Estado en el Backlog, así que su
-título ocupa ese espacio y solo conservan Fecha y Acciones bajo las del Epic. Hay un desfase de 13px (padding de la lista + borde de la
-tarjeta) que `TREE_EDGE_INSET` compensa: si tocas ese padding o borde, la alineación se
-rompe en silencio. Verifica midiendo `getBoundingClientRect` del badge de estado en los tres niveles.
-
-**La jerarquía se marca por contención, no solo por sangría.** Cada feature es una tarjeta
-con su borde y sombra, separada de las demás; el bloque desplegado del Epic lleva una
-franja de acento a la izquierda. Son cuatro fondos escalonados (Epic → bloque → tarjeta de
-feature → zona de bugs) y eso es lo que da la sensación de profundidad.
+**La jerarquía se marca por sangría, ícono y fondo.** Epic: avatar con iniciales. Feature:
+carpeta violeta, fila con fondo suave (más marcado si está abierto). Bug: ícono ámbar
+(`BUG_ACCENT`), fondo algo más oscuro y una línea conectora que cuelga de la carpeta del
+feature. Las filas anidadas llevan una franja violeta a la izquierda (`NESTED_STRIP`). Ya no
+hay tarjetas por feature.
 
 **No hay carpeta "Bugs" intermedia.** Existió y se quitó: añadía una fila y un clic por
 feature sin aportar nada, porque el conteo ya está en la columna del feature.
@@ -264,7 +259,7 @@ cada píxel cuenta.
 | Cualquier consulta a la base | `src/hooks/` — el patrón está en `useNotes.js` |
 | La jerarquía del backlog | `src/pages/Backlog.jsx` → `EpicExpandedDetail` → `FeatureBugList` |
 | Anchos de columna y sangrías del árbol | `src/components/backlog/treeLayout.js` |
-| Cabecera, etiqueta y acciones del árbol | `src/components/backlog/TreeRow.jsx` |
+| Etiqueta y acciones de las filas del árbol | `src/components/backlog/TreeRow.jsx` |
 | Fecha de creación de features y bugs | `CreatedAtField.jsx` + `dateInputToTimestamp` en `src/lib/format.js` |
 | El tablero, su drag y la clasificación de bugs | `src/pages/BugBoard.jsx` + `src/lib/position.js` + `BugFormSheet` (modo `board`) |
 | Casos de Prueba | `src/pages/TestCases.jsx` (`COLUMNS` y `DETAIL_FIELDS` al inicio) |

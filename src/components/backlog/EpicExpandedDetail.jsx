@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Folder, FolderOpen, Loader2 } from 'lucide-react';
+import { TableCell, TableRow } from '@/components/ui/table';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useFeatures } from '@/hooks/useFeatures';
 import { useCommentCounts } from '@/hooks/useComments';
@@ -9,11 +10,25 @@ import { StatusDropdown } from './StatusDropdown';
 import { FeatureFormModal } from './FeatureFormModal';
 import { FeatureBugList } from './FeatureBugList';
 import { CommentsPanel } from './CommentsPanel';
-import { TreeLabel, TreeHeader, RowActions } from './TreeRow';
-import {
-    TREE_GRID, TREE_COL, TREE_LIST_PADDING, FEATURE_INDENT, FEATURE_TITLE_OFFSET,
-} from './treeLayout';
+import { TreeLabel, RowActions } from './TreeRow';
+import { FEATURE_INDENT, NESTED_STRIP } from './treeLayout';
 
+/** Fila de mensaje (cargando / vacío) que ocupa las cuatro columnas de la tabla. */
+function MessageRow({ children }) {
+    return (
+        <TableRow className="border-b border-border/40 bg-muted/30 hover:bg-muted/30">
+            <TableCell colSpan={4} className={`${NESTED_STRIP} py-6 text-center`}>
+                {children}
+            </TableCell>
+        </TableRow>
+    );
+}
+
+/**
+ * Filas de los features de un Epic. No dibuja su propia tabla: devuelve `<tr>`s que
+ * se insertan en la tabla del Epic (Backlog.jsx), de modo que Estado, Fecha y Acciones
+ * caen en las mismas columnas que las del Epic.
+ */
 export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, onFeatureFormOpened }) {
     const {
         features, loading, fetchFeatures,
@@ -79,48 +94,32 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
     };
 
     return (
-        // Franja de acento a la izquierda: ata todo el bloque desplegado a su Epic.
-        <div className="bg-muted/40 border-t border-border/60 border-l-[3px] border-l-primary/40">
+        <>
             {loading ? (
-                <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground">
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="text-xs font-bold">Cargando features...</span>
-                </div>
+                <MessageRow>
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                        <Loader2 size={16} className="animate-spin" />
+                        <span className="text-xs font-bold">Cargando features...</span>
+                    </span>
+                </MessageRow>
             ) : features.length === 0 ? (
-                <div className="py-10 text-center">
+                <MessageRow>
                     <p className="text-xs font-bold text-muted-foreground">Sin features todavía</p>
                     <p className="text-[11px] text-muted-foreground/60 mt-1">
                         Agrega un feature para empezar a registrar bugs.
                     </p>
-                </div>
+                </MessageRow>
             ) : (
-                // Cada feature es una tarjeta propia: la separación entre bloques es
-                // lo que hace legible la jerarquía, más que la sangría sola.
-                <div className="space-y-2.5" style={{ padding: TREE_LIST_PADDING }}>
-                    <TreeHeader
-                        outsideCard
-                        indent={FEATURE_TITLE_OFFSET}
-                        cells={[
-                            { label: 'Feature', column: TREE_COL.label },
-                            { label: 'Bugs', column: TREE_COL.first, span: 2 },
-                            { label: 'Estado', column: TREE_COL.status },
-                            { label: 'Fecha de creación', column: TREE_COL.date, align: 'center' },
-                            { label: 'Acciones', column: TREE_COL.actions, align: 'center' },
-                        ]}
-                    />
-                    {features.map((feature) => {
-                        const isExpanded = expandedIds.has(feature.id);
-                        const bugCount = feature.bugs?.[0]?.count ?? 0;
+                features.map((feature) => {
+                    const isExpanded = expandedIds.has(feature.id);
+                    const bugCount = feature.bugs?.[0]?.count ?? 0;
 
-                        return (
-                            <div
-                                key={feature.id}
-                                className="rounded-xl border border-border/60 bg-card shadow-sm overflow-hidden"
+                    return (
+                        <Fragment key={feature.id}>
+                            <TableRow
+                                className={`border-b border-border/40 transition-colors ${isExpanded ? 'bg-primary/5 hover:bg-primary/5' : 'bg-muted/30 hover:bg-muted/50'}`}
                             >
-                                <div
-                                    className={`grid items-center transition-colors ${isExpanded ? 'bg-primary/5' : 'hover:bg-muted/20'}`}
-                                    style={{ gridTemplateColumns: TREE_GRID }}
-                                >
+                                <TableCell className={`${NESTED_STRIP} p-0`}>
                                     <TreeLabel
                                         indent={FEATURE_INDENT}
                                         expandable
@@ -131,32 +130,25 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                                         iconColor="var(--primary)"
                                         title={feature.name}
                                         subtitle={feature.description}
+                                        meta={(
+                                            <span className="shrink-0 px-2 py-0.5 rounded-full bg-foreground/10 text-[10px] font-bold text-foreground/70 tabular-nums">
+                                                {bugCount} {bugCount === 1 ? 'bug' : 'bugs'}
+                                            </span>
+                                        )}
                                     />
-
-                                    <span
-                                        className="text-[11px] font-bold text-muted-foreground/70 tabular-nums"
-                                        style={{ gridColumn: `${TREE_COL.first} / span 2` }}
-                                    >
-                                        {bugCount} {bugCount === 1 ? 'bug' : 'bugs'}
-                                    </span>
-
-                                    <div className="pl-2" style={{ gridColumn: TREE_COL.status }}>
-                                        <StatusDropdown
-                                            value={feature.status}
-                                            map={ENTITY_STATUS}
-                                            onChange={(status) => updateFeatureStatus(feature.id, status)}
-                                        />
-                                    </div>
-
-                                    <span
-                                        className="text-center text-xs font-medium text-muted-foreground/80"
-                                        style={{ gridColumn: TREE_COL.date }}
-                                    >
-                                        {formatLocalDate(feature.created_at)}
-                                    </span>
-
+                                </TableCell>
+                                <TableCell className="py-2">
+                                    <StatusDropdown
+                                        value={feature.status}
+                                        map={ENTITY_STATUS}
+                                        onChange={(status) => updateFeatureStatus(feature.id, status)}
+                                    />
+                                </TableCell>
+                                <TableCell className="text-center text-sm font-medium text-muted-foreground/80">
+                                    {formatLocalDate(feature.created_at)}
+                                </TableCell>
+                                <TableCell className="py-2">
                                     <RowActions
-                                        nested
                                         entityLabel="feature"
                                         addLabel="Agregar bug"
                                         addText="Bug"
@@ -166,20 +158,20 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                                         onEdit={() => { setFormFeature(feature); setFormOpen(true); }}
                                         onDelete={() => setDeleting(feature)}
                                     />
-                                </div>
+                                </TableCell>
+                            </TableRow>
 
-                                {isExpanded && (
-                                    <FeatureBugList
-                                        featureId={feature.id}
-                                        openBugForm={addBugFor === feature.id}
-                                        onBugFormOpened={() => setAddBugFor(null)}
-                                        onContentChange={handleBugChange}
-                                    />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
+                            {isExpanded && (
+                                <FeatureBugList
+                                    featureId={feature.id}
+                                    openBugForm={addBugFor === feature.id}
+                                    onBugFormOpened={() => setAddBugFor(null)}
+                                    onContentChange={handleBugChange}
+                                />
+                            )}
+                        </Fragment>
+                    );
+                })
             )}
 
             <FeatureFormModal
@@ -203,6 +195,6 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                 onClose={() => setCommentTarget(null)}
                 target={commentTarget}
             />
-        </div>
+        </>
     );
 }

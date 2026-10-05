@@ -67,7 +67,7 @@ caso, sigue el orden que indica [supabase/README.md](supabase/README.md).
 | Ruta | Pantalla |
 |---|---|
 | `/login` | Login — **mockup**, no valida nada, solo navega a `/backlog` (y "Cerrar sesión" solo vuelve aquí) |
-| `/backlog` | Backlog de QA: tabla de Epics con expansión anidada a Features y Bugs, cada nivel con su cabecera de columnas |
+| `/backlog` | Backlog de QA: una sola tabla (Elemento · Estado · Fecha de creación · Acciones) donde los Features y Bugs son filas anidadas bajo su Epic |
 | `/bugs` | Tablero de Bugs: 4 columnas, drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) |
 | `/casos-de-prueba` | Casos de Prueba — en construcción |
 | `/notes` | Notas del equipo |
@@ -88,8 +88,8 @@ src/
   pages/              Backlog · BugBoard · TestCases · Notes · Login
   components/
     backlog/          Jerarquía Epic→Feature→Bug, formularios y comentarios
-      TreeRow.jsx     Etiqueta, cabecera de columnas y acciones compartidas del árbol
-      treeLayout.js   Anchos de columna y sangrías del árbol (ver Convenciones)
+      TreeRow.jsx     Etiqueta y acciones compartidas de las filas del árbol
+      treeLayout.js   Anchos de columna y sangrías del árbol
       CreatedAtField  Selector de fecha de creación de features y bugs
     notes/            Tarjetas y formulario de notas
     ui/               shadcn + componentes propios compartidos
@@ -118,17 +118,13 @@ precio de usar `text + CHECK` en vez de enums de Postgres, y está anotado en am
 inline. Antes se interpolaba `var(--status-${id})`, lo que fallaba en silencio (pintaba
 transparente) si faltaba un token.
 
-**El árbol del backlog comparte una sola rejilla.** Features y bugs usan `TREE_GRID`
-(`src/components/backlog/treeLayout.js`) y **la sangría se aplica solo a la etiqueta**,
-nunca al contenedor de la fila. Si se indenta el contenedor, se desplazan también las
-columnas de la derecha, y el árbol deja de leerse alineado.
-
-**El estado de cada nivel queda justo debajo del estado del Epic.** Las tres columnas
-de la derecha de `TREE_GRID` (Estado, Fecha, Acciones) miden lo mismo que las de la
-tabla del Epic en `Backlog.jsx`, que usa `table-fixed` para conservarlas. Si cambias el
-ancho de una, cámbialo en `treeLayout.js` (`TREE_*_WIDTH`) y ambos lados se actualizan.
-Las filas anidadas terminan 13px antes del borde (padding de la lista + borde de la
-tarjeta); `TREE_EDGE_INSET` lo compensa. Si cambias ese padding o borde, actualiza la constante.
+**El backlog es una sola tabla para los tres niveles.** Epics, Features y Bugs son filas de la
+misma `<Table>` (`Backlog.jsx`); `EpicExpandedDetail` y `FeatureBugList` no dibujan tabla propia,
+devuelven `<tr>`s que se insertan en ella. La primera columna se llama "Elemento" y lleva el
+nombre del Epic, Feature o Bug; lo único que cambia entre niveles es su **sangría**
+(`treeLayout.js`), su ícono y su fondo. Estado, Fecha y Acciones son las mismas columnas para
+todos, así que quedan alineadas sin cálculos. La tabla usa `table-fixed` para que los anchos
+no cambien al desplegar filas.
 
 **Los bugs se registran en el Backlog y se clasifican en el Tablero.** El Backlog solo
 muestra y edita título, descripción y fecha de creación de un bug; el estado, la severidad

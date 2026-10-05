@@ -29,7 +29,6 @@ import {
 import '../App.css';
 
 const ITEMS_PER_PAGE = 10;
-const COLUMN_COUNT = 4;
 
 export default function Backlog() {
     const {
@@ -177,14 +176,15 @@ export default function Backlog() {
                     <Card className="border-border/40 overflow-hidden bg-card shadow-lg shadow-black/5 rounded-2xl p-0">
                         <CardContent className="p-0 bg-muted">
                             <div className="overflow-x-auto">
-                                {/* Layout fijo: Estado/Fecha/Acciones conservan el ancho de TREE_*_WIDTH
-                                    y el nombre absorbe el resto. Las filas anidadas (TREE_GRID) usan esos
-                                    mismos anchos para alinear sus estados bajo el del Epic. */}
+                                {/* Una sola tabla para los tres niveles: la primera columna lleva el
+                                    nombre del Epic, del Feature o del Bug (según la sangría) y las
+                                    demás son comunes. Layout fijo para que los anchos no bailen al
+                                    desplegar filas. */}
                                 <Table className="table-fixed min-w-[1000px]">
                                     <TableHeader className="bg-muted border-b-2 border-border">
                                         <TableRow className="hover:bg-transparent border-none">
                                             <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 pl-8 h-16">
-                                                Epic
+                                                Elemento
                                             </TableHead>
                                             <TableHead
                                                 className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16"
@@ -265,17 +265,14 @@ export default function Backlog() {
                                                             />
                                                         </TableCell>
                                                     </TableRow>
+                                                    {/* Features y bugs son filas de esta misma tabla. */}
                                                     {isExpanded && (
-                                                        <TableRow className="hover:bg-transparent border-none">
-                                                            <TableCell colSpan={COLUMN_COUNT} className="p-0 border-b border-border/60">
-                                                                <EpicExpandedDetail
-                                                                    epicId={epic.id}
-                                                                    openFeatureForm={addFeatureFor === epic.id}
-                                                                    onFeatureFormOpened={() => setAddFeatureFor(null)}
-                                                                    onContentChange={() => setChildCount((n) => n + 1)}
-                                                                />
-                                                            </TableCell>
-                                                        </TableRow>
+                                                        <EpicExpandedDetail
+                                                            epicId={epic.id}
+                                                            openFeatureForm={addFeatureFor === epic.id}
+                                                            onFeatureFormOpened={() => setAddFeatureFor(null)}
+                                                            onContentChange={() => setChildCount((n) => n + 1)}
+                                                        />
                                                     )}
                                                 </Fragment>
                                             );

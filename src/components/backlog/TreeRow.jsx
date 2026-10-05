@@ -6,36 +6,8 @@ import {
     DropdownMenuTrigger,
     DropdownMenuContent,
 } from '@/components/ui/dropdown-menu';
-import { TREE_GRID, TREE_COL, TREE_EDGE_INSET } from './treeLayout';
 
-/**
- * Cabecera de columnas: `cells` es `[{ label, column, span?, align? }]`.
- * `outsideCard` reserva el 1px de borde de las tarjetas de feature, para que la
- * cabecera de la lista de features alinee con las filas que van dentro de ellas.
- */
-export function TreeHeader({ cells, indent = 0, outsideCard = false }) {
-    return (
-        <div
-            className={`grid items-center py-2 ${outsideCard ? 'border border-transparent' : ''}`}
-            style={{ gridTemplateColumns: TREE_GRID }}
-        >
-            {cells.map(({ label, column, span = 1, align }) => (
-                <span
-                    key={label}
-                    className={`text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/70 truncate ${align === 'center' ? 'text-center' : ''}`}
-                    style={{
-                        gridColumn: `${column} / span ${span}`,
-                        ...(column === TREE_COL.label && { paddingLeft: indent }),
-                        ...(column === TREE_COL.status && { paddingLeft: 8 }),
-                    }}
-                >
-                    {label}
-                </span>
-            ))}
-        </div>
-    );
-}
-
+/** Etiqueta de una fila del árbol: chevron opcional, ícono, título, `meta` y subtítulo. */
 export function TreeLabel({
     indent = 0,
     expandable = false,
@@ -44,6 +16,7 @@ export function TreeLabel({
     icon: Icon,
     iconColor,
     title,
+    meta,
     subtitle,
     toggleTitle,
     titleClassName = 'text-[13px] font-bold text-foreground',
@@ -69,16 +42,21 @@ export function TreeLabel({
 
             <Icon size={16} strokeWidth={2} className="shrink-0" style={{ color: iconColor }} />
 
-            <button
-                onClick={onToggle}
-                disabled={!expandable}
-                className="min-w-0 text-left disabled:cursor-default"
-            >
-                <span className={`block truncate ${titleClassName}`}>{title}</span>
+            <div className="min-w-0">
+                <div className="flex items-center gap-2 min-w-0">
+                    <button
+                        onClick={onToggle}
+                        disabled={!expandable}
+                        className="min-w-0 text-left disabled:cursor-default"
+                    >
+                        <span className={`block truncate ${titleClassName}`}>{title}</span>
+                    </button>
+                    {meta}
+                </div>
                 {subtitle && (
                     <span className="block text-[11px] text-muted-foreground/70 truncate">{subtitle}</span>
                 )}
-            </button>
+            </div>
         </div>
     );
 }
@@ -89,17 +67,12 @@ export function TreeLabel({
  */
 export function RowActions({
     onComment, commentCount = 0, onEdit, onDelete, entityLabel,
-    onAdd, addLabel, addText, nested = false,
+    onAdd, addLabel, addText,
 }) {
     const textButton = 'flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-bold transition-colors';
 
-    // En la tabla del Epic los botones terminan a 16px del borde (celda p-2 + pr-2);
-    // las filas anidadas ya empiezan TREE_EDGE_INSET px dentro, así que restan eso.
     return (
-        <div
-            className="flex items-center justify-end gap-1"
-            style={{ paddingRight: nested ? 16 - TREE_EDGE_INSET : 8 }}
-        >
+        <div className="flex items-center justify-end gap-1 pr-2">
             {onAdd && (
                 <button
                     onClick={onAdd}

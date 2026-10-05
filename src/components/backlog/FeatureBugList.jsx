@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bug as BugIcon, Loader2, ArrowRight } from 'lucide-react';
+import { TableCell, TableRow } from '@/components/ui/table';
 import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 import { useBugs } from '@/hooks/useBugs';
 import { useCommentCounts } from '@/hooks/useComments';
@@ -9,18 +10,14 @@ import { BugFormSheet } from './BugFormSheet';
 import { CommentsPanel } from './CommentsPanel';
 import { RowActions } from './TreeRow';
 import {
-    TREE_GRID, TREE_COL, BUG_INDENT, BUG_ACCENT, FEATURE_ICON_CENTER,
+    BUG_INDENT, BUG_ACCENT, FEATURE_ICON_CENTER, TICK_WIDTH, NESTED_STRIP,
 } from './treeLayout';
-
-/** Largo del trazo horizontal que va de la línea del feature al ícono del bug. */
-const TICK_WIDTH = 14;
 
 /**
  * Línea que cuelga del ícono del feature y une a sus bugs: es lo que hace evidente
- * que son hijos suyos. `end` corta la línea a la mitad de la fila en el último bug,
- * y `tick` dibuja el trazo hacia el ícono.
+ * que son hijos suyos. `end` corta la línea a la mitad de la fila en el último bug.
  */
-function Connector({ end = false, tick = true }) {
+function Connector({ end = false }) {
     return (
         <>
             <span
@@ -28,17 +25,31 @@ function Connector({ end = false, tick = true }) {
                 className="absolute top-0 w-px bg-border"
                 style={{ left: FEATURE_ICON_CENTER, height: end ? '50%' : '100%' }}
             />
-            {tick && (
-                <span
-                    aria-hidden
-                    className="absolute top-1/2 h-px bg-border"
-                    style={{ left: FEATURE_ICON_CENTER, width: TICK_WIDTH }}
-                />
-            )}
+            <span
+                aria-hidden
+                className="absolute top-1/2 h-px bg-border"
+                style={{ left: FEATURE_ICON_CENTER, width: TICK_WIDTH }}
+            />
         </>
     );
 }
 
+/** Fila de mensaje (cargando / vacío) bajo un feature, sangrada al nivel de los bugs. */
+function MessageRow({ children }) {
+    return (
+        <TableRow className="border-b border-border/30 bg-muted/50 hover:bg-muted/50">
+            <TableCell colSpan={4} className={`${NESTED_STRIP} py-4`} style={{ paddingLeft: BUG_INDENT }}>
+                {children}
+            </TableCell>
+        </TableRow>
+    );
+}
+
+/**
+ * Filas de los bugs de un feature. Como las de los features, son `<tr>`s de la tabla
+ * del Epic. Aquí no se muestran estado, severidad ni prioridad: se ven y se cambian
+ * desde el Tablero de Bugs, al que lleva el enlace "Ver en el tablero".
+ */
 export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugFormOpened }) {
     const {
         bugs, loading, createBug, updateBug, deleteBug,
@@ -76,83 +87,51 @@ export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugF
     };
 
     return (
-        // Zona de bugs dentro de la tarjeta del feature: fondo propio, una cabecera
-        // que la nombra y una línea que la cuelga del ícono del feature.
-        <div className="border-t border-border/60 bg-muted/40">
-            {/* Cabecera: dice qué es esta zona. Estado, severidad y prioridad no se
-                muestran aquí; se ven y se cambian desde el Tablero de Bugs. */}
-            <div
-                className="relative grid items-center py-2 border-b border-border/40"
-                style={{ gridTemplateColumns: TREE_GRID }}
-            >
-                <Connector tick={false} />
-                <div
-                    className="flex items-center gap-2 min-w-0"
-                    style={{ paddingLeft: BUG_INDENT, gridColumn: `${TREE_COL.label} / span 4` }}
-                >
-                    <BugIcon size={13} strokeWidth={2.5} style={{ color: BUG_ACCENT }} />
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/70">
-                        Bugs
-                    </span>
-                    {!loading && (
-                        <span className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-foreground/10 text-foreground/70 text-[10px] font-black flex items-center justify-center tabular-nums">
-                            {bugs.length}
-                        </span>
-                    )}
-                </div>
-                {bugs.length > 0 && (
-                    <span
-                        className="text-center text-[9px] font-black uppercase tracking-[0.15em] text-muted-foreground/70"
-                        style={{ gridColumn: TREE_COL.date }}
-                    >
-                        Fecha de creación
-                    </span>
-                )}
-            </div>
-
+        <>
             {loading ? (
-                <div className="flex items-center gap-2 py-4 text-muted-foreground" style={{ paddingLeft: BUG_INDENT }}>
-                    <Loader2 size={14} className="animate-spin" />
-                    <span className="text-[11px] font-bold">Cargando bugs...</span>
-                </div>
+                <MessageRow>
+                    <span className="inline-flex items-center gap-2 text-muted-foreground">
+                        <Loader2 size={14} className="animate-spin" />
+                        <span className="text-[11px] font-bold">Cargando bugs...</span>
+                    </span>
+                </MessageRow>
             ) : bugs.length === 0 ? (
-                <p
-                    className="py-4 text-[11px] font-bold text-muted-foreground/60"
-                    style={{ paddingLeft: BUG_INDENT }}
-                >
-                    Sin bugs registrados
-                </p>
+                <MessageRow>
+                    <span className="text-[11px] font-bold text-muted-foreground/60">
+                        Sin bugs registrados
+                    </span>
+                </MessageRow>
             ) : (
                 bugs.map((bug, index) => (
-                    <div
+                    <TableRow
                         key={bug.id}
-                        className="relative grid items-center border-b border-border/30 last:border-b-0 hover:bg-card/70 transition-colors"
-                        style={{ gridTemplateColumns: TREE_GRID }}
+                        className="border-b border-border/30 bg-muted/50 hover:bg-muted/70 transition-colors"
                     >
-                        <Connector end={index === bugs.length - 1} />
-
-                        <div
-                            className="flex items-center gap-2 min-w-0 py-2.5"
-                            style={{ paddingLeft: BUG_INDENT, gridColumn: `${TREE_COL.label} / span 3` }}
-                        >
-                            <BugIcon
-                                size={15}
-                                strokeWidth={2}
-                                className="shrink-0"
-                                style={{ color: BUG_ACCENT }}
-                            />
-                            <button
-                                onClick={() => { setFormBug(bug); setFormOpen(true); }}
-                                className="min-w-0 text-left"
+                        <TableCell className={`relative p-0 ${NESTED_STRIP}`}>
+                            <Connector end={index === bugs.length - 1} />
+                            <div
+                                className="flex items-center gap-2 min-w-0 py-2.5"
+                                style={{ paddingLeft: BUG_INDENT }}
                             >
-                                <span className="block text-[12px] font-semibold text-foreground truncate">
-                                    {bug.title}
-                                </span>
-                            </button>
-                        </div>
+                                <BugIcon
+                                    size={15}
+                                    strokeWidth={2}
+                                    className="shrink-0"
+                                    style={{ color: BUG_ACCENT }}
+                                />
+                                <button
+                                    onClick={() => { setFormBug(bug); setFormOpen(true); }}
+                                    className="min-w-0 text-left"
+                                >
+                                    <span className="block text-[12px] font-semibold text-foreground truncate">
+                                        {bug.title}
+                                    </span>
+                                </button>
+                            </div>
+                        </TableCell>
 
-                        {/* Donde el feature muestra su estado, el bug lleva a donde se ve el suyo. */}
-                        <div className="pl-2" style={{ gridColumn: TREE_COL.status }}>
+                        {/* Donde el Epic y el feature muestran su Estado, el bug lleva a donde se ve el suyo. */}
+                        <TableCell className="py-2">
                             <Link
                                 to={`/bugs?bug=${bug.id}`}
                                 title="Ver el estado, la severidad y la prioridad en el Tablero de Bugs"
@@ -161,24 +140,22 @@ export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugF
                                 Ver en el tablero
                                 <ArrowRight size={13} strokeWidth={2.5} />
                             </Link>
-                        </div>
+                        </TableCell>
 
-                        <span
-                            className="text-center text-xs font-medium text-muted-foreground/80"
-                            style={{ gridColumn: TREE_COL.date }}
-                        >
+                        <TableCell className="text-center text-sm font-medium text-muted-foreground/80">
                             {formatLocalDate(bug.created_at)}
-                        </span>
+                        </TableCell>
 
-                        <RowActions
-                            nested
-                            entityLabel="bug"
-                            commentCount={commentCounts[bug.id] || 0}
-                            onComment={() => setCommentTarget({ type: 'bug', id: bug.id, title: bug.title })}
-                            onEdit={() => { setFormBug(bug); setFormOpen(true); }}
-                            onDelete={() => setDeleting(bug)}
-                        />
-                    </div>
+                        <TableCell className="py-2">
+                            <RowActions
+                                entityLabel="bug"
+                                commentCount={commentCounts[bug.id] || 0}
+                                onComment={() => setCommentTarget({ type: 'bug', id: bug.id, title: bug.title })}
+                                onEdit={() => { setFormBug(bug); setFormOpen(true); }}
+                                onDelete={() => setDeleting(bug)}
+                            />
+                        </TableCell>
+                    </TableRow>
                 ))
             )}
 
@@ -203,6 +180,6 @@ export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugF
                 onClose={() => setCommentTarget(null)}
                 target={commentTarget}
             />
-        </div>
+        </>
     );
 }
