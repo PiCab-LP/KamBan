@@ -48,6 +48,9 @@ verificaron de punta a punta contra la base real:
 - Métricas del backlog y contador de bugs por feature (se refresca al crear o borrar bugs).
 - Notas vinculables a Epic, Feature o Bug (o globales).
 - Modo claro/oscuro, instantáneo.
+- **Regla de completado** (sin verificar de punta a punta, ver abajo): un Feature o Epic no
+  pasa a "Completado" con bugs abiertos o, en el Epic, features sin completar. Alerta en el
+  frontend y rechazo en la base.
 
 `npm run lint` y `npm run build` pasan limpios.
 
@@ -115,46 +118,58 @@ Hasta entonces no se puede escribir la migración, porque los `CHECK` necesitan 
 > conectar la tabla a datos reales. Es una fila falsa que puse para poder evaluar el
 > layout; los valores de Tipo/Prioridad/Estado que lleva son inventados.
 
-### 2. "Compañía" apunta a una tabla que ya no existe 🔴
+### 2. "Compañía" apunta a una tabla que ya no existe — decidido: texto libre ✅
 
-Es uno de los 15 campos de Casos de Prueba, pero `companies` se borró en la migración.
-**Está sin resolver.** Las opciones planteadas al usuario, sin respuesta todavía:
+**Decidido (octubre de 2026):** "Compañía" será una columna `text` libre, y los casos de prueba serán
+independientes de la jerarquía (sin FK a Epic/Feature). Lo que sigue abierto es el punto 1.
 
-- texto libre,
-- una tabla nueva de compañías,
-- o que apunte a los Epics.
+> **Matiz posterior:** la pantalla ya tiene un filtro por Epic (`components/testcases/EpicFilter.jsx`,
+> alimentado por `useEpics`). Para que filtre de verdad, `test_cases` necesita un **`epic_id` opcional**
+> (`references epics(id) on delete set null`, como las notas). Eso matiza lo de "independientes": no
+> hay FK a Feature, pero sí un vínculo suave a Epic. Hoy el filtro opera sobre `epic_id` de la fila de
+> ejemplo (que es `null`), así que al elegir un Epic sale el estado vacío.
 
-Hay que decidirlo antes de escribir la migración de `test_cases`.
+Antes estaba sin resolver porque `companies` se borró en la migración; se descartaron la tabla
+nueva de compañías y apuntar a los Epics.
 
-### 3. El drag & drop del tablero nunca se verificó ⚠️
+### 3. El drag & drop del tablero — verificado ✅
 
-El código está escrito y la lógica es correcta a la lectura, pero **no se pudo probar**.
-La herramienta de automatización hace el arrastre en un solo salto y el `PointerSensor`
-de dnd-kit tiene `activationConstraint: { distance: 10 }`, así que nunca se activaba:
-solo seleccionaba texto.
+Verificado a mano por el usuario (octubre de 2026). Antes no se había podido probar porque la
+herramienta de automatización arrastra en un solo salto y el `PointerSensor` de dnd-kit exige
+`activationConstraint: { distance: 10 }`.
 
-Hay que probarlo a mano. Lo que importa comprobar:
+### 4. Regla de completado: aplicar la migración y probar 🔴
 
-- que arrastrar entre columnas cambie el estado del bug y persista;
-- que mover un bug de **Resuelto → Nuevo arrastrando** también lo marque como reabierto
-  (la regla vive en `shouldFlagReopen`, y la llaman tanto `updateBug` —la hoja de
-  clasificación, esa sí probada— como `moveBug` desde `handleDragEnd`; si solo funcionara
-  en uno, discreparían).
+El código está escrito (`src/lib/completionGuard.js`, `useEpics`, `useFeatures`) y `lint` y
+`build` pasan, pero **no se ha probado contra la base real**: no había `.env` en la máquina donde
+se escribió. Falta:
 
-### 4. Sin autenticación
+1. Pegar `supabase/migrations/20261006120000_completion_guard.sql` en el SQL Editor de Supabase.
+2. Probar: Feature con un bug `nuevo` → Completado debe avisar y no cambiar; resolver/cerrar el
+   bug y reintentar debe dejarlo pasar; igual con un Epic con features sin completar.
+3. Probar el trigger solo (sin la UI) con los `UPDATE` del final de la migración.
+
+**Lo que la regla NO cubre** (decisión pendiente): solo mira hacia abajo al *cambiar a*
+Completado. Si después **se crea un bug** en un Feature completado, o **se reabre uno**, o se
+**agrega un Feature** a un Epic completado, queda un padre Completado con trabajo abierto. Las
+opciones son bloquear esas acciones, mostrar una advertencia, o aceptarlo. Ojo con la tentación de
+"bajar el padre a En progreso automáticamente": sería estado derivado, rechazado antes (ver
+*Estados manuales, nunca derivados*).
+
+### 5. Sin autenticación
 
 Ver el aviso del [README](README.md#seguridad). No es un olvido, es una decisión
 consciente con su checklist de salida documentado en el SQL de RLS. El login y el
 "Cerrar sesión" son solo navegación.
 
-### 5. Fechas de creación editables: `created_at` ya no es un registro fiable
+### 6. Fechas de creación editables: `created_at` ya no es un registro fiable
 
 Como `created_at` se puede fijar a mano en features y bugs, ya no sirve como marca de
 auditoría de cuándo se insertó la fila. Si algún día hace falta eso, habría que añadir
 una columna aparte (p. ej. `reported_at` para la fecha editable) y dejar `created_at`
 intacto. Hoy no hace falta, pero conviene saberlo antes de apoyar reportes en esa columna.
 
-### 6. Bundle de 680 kB
+### 7. Bundle de 680 kB
 
 `vite build` avisa de un chunk mayor a 500 kB. No es urgente; `React.lazy` por ruta lo
 resolvería.
@@ -175,9 +190,11 @@ enum exige `ALTER TYPE ... ADD VALUE`, y quitar o renombrar un valor obliga a re
 tipo y todas sus columnas. Un `CHECK` se cambia en una línea. El coste es que los valores
 están duplicados entre el SQL y `src/lib/domain.js`.
 
-**Un solo trigger en toda la base: `set_updated_at`.** Toda esta migración existe porque
+**Triggers: `set_updated_at` y dos de solo validación.** Toda esta migración existe porque
 había un trigger invisible generando datos que nadie podía auditar. No se reintrodujo
-magia oculta: el flag de "Reabierto" lo calcula el frontend, a la vista.
+magia oculta: el flag de "Reabierto" lo calcula el frontend, a la vista. Los triggers de
+`completion_guard` solo *rechazan* un UPDATE incoherente (SQLSTATE `QA001`); no escriben nada.
+Se usó trigger porque una regla entre tablas no cabe en un `CHECK`.
 
 **"Reabierto" es un booleano, no un quinto estado.** Se evaluó un contador de reaperturas
 ("Reabierto ×3") y el usuario lo descartó: prefirió la señal simple.

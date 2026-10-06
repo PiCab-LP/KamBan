@@ -24,6 +24,7 @@ pegando cada archivo completo y en este orden:
 | 1 | `migrations/20261002120000_drop_legacy.sql` | Borra el dominio viejo. **Destructivo.** |
 | 2 | `migrations/20261002120100_create_qa_schema.sql` | Crea epics, features, bugs, comments, notes. |
 | 3 | `migrations/20261002120200_rls_policies.sql` | Activa RLS. |
+| 4 | `migrations/20261006120000_completion_guard.sql` | Triggers que impiden completar un Epic/Feature con trabajo pendiente. |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.
@@ -59,10 +60,17 @@ PostgREST expone ambos como string al cliente, así que no se pierde nada.
 > `src/lib/domain.js`. Al cambiar uno hay que cambiar el otro. Es el precio de no usar
 > enums y está anotado en ambos sitios.
 
-**Un solo trigger: `set_updated_at()`.** Toda esta migración existe porque había un
-trigger invisible generando datos que nadie podía auditar. No se reintroduce magia
+**Triggers: `set_updated_at()` y dos que solo validan.** Toda esta migración existe porque
+había un trigger invisible generando datos que nadie podía auditar. No se reintroduce magia
 oculta: el flag de "Reabierto" de los bugs lo calcula el frontend
 (`shouldFlagReopen` en `src/lib/domain.js`), no la base de datos.
+
+Los triggers `features_guard_completion` y `epics_guard_completion` (migración 4) **no
+escriben ni derivan nada**: rechazan con el SQLSTATE `QA001` un UPDATE que ponga "Completado"
+mientras haya bugs abiertos (`nuevo`/`en_progreso`) o, en un Epic, features sin completar.
+Una regla entre tablas no se puede expresar con un `CHECK`, por eso es un trigger. Solo
+actúan al *cambiar* a Completado, y los "bugs abiertos" están duplicados en
+`OPEN_BUG_STATUSES` (`src/lib/domain.js`).
 
 **`position` solo en `bugs`.** Es el único sitio con drag & drop (el Tablero de Bugs).
 Epics y Features se ordenan por `created_at`. Es `numeric` para permitir posiciones

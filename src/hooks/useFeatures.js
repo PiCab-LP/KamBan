@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
+import { COMPLETED_STATUS } from '../lib/domain';
+import { checkCanComplete, isCompletionBlocked } from '../lib/completionGuard';
 
 export function useFeatures(epicId) {
     const { showToast } = useToast();
@@ -36,6 +38,22 @@ export function useFeatures(epicId) {
         fetchFeatures();
     }, [fetchFeatures]);
 
+    /**
+     * Devuelve el motivo si `nextStatus` es un completado no permitido; null si procede.
+     * Solo evalúa cuando el estado realmente cambia a Completado, igual que el trigger.
+     */
+    const completionBlockReason = async (id, nextStatus) => {
+        const current = features.find((x) => x.id === id);
+        if (nextStatus !== COMPLETED_STATUS || current?.status === COMPLETED_STATUS) return null;
+        const check = await checkCanComplete('feature', id);
+        return check.ok ? null : check.message;
+    };
+
+    const blockedResult = (message) => {
+        showToast(message, 'warning', 'No se puede completar', 7000);
+        return { success: false, error: message };
+    };
+
     const createFeature = async (featureData) => {
         try {
             const { error } = await supabase
@@ -52,6 +70,9 @@ export function useFeatures(epicId) {
     };
 
     const updateFeature = async (id, featureData) => {
+        const blocked = await completionBlockReason(id, featureData.status);
+        if (blocked) return { success: false, error: blocked };
+
         try {
             const { error } = await supabase.from('features').update(featureData).eq('id', id);
             if (error) throw error;
@@ -65,6 +86,9 @@ export function useFeatures(epicId) {
     };
 
     const updateFeatureStatus = async (id, status) => {
+        const blocked = await completionBlockReason(id, status);
+        if (blocked) return blockedResult(blocked);
+
         const previous = features;
         setFeatures((prev) => prev.map((f) => (f.id === id ? { ...f, status } : f)));
 
@@ -75,6 +99,7 @@ export function useFeatures(epicId) {
         } catch (err) {
             console.error('Error updating feature status:', err.message);
             setFeatures(previous);
+            if (isCompletionBlocked(err)) return blockedResult(err.message);
             showToast('No se pudo actualizar el estado', 'error');
             return { success: false, error: err.message };
         }

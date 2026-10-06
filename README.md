@@ -144,6 +144,14 @@ locales para que el huso horario no la corra de día (`dateInputToTimestamp` en
 `src/lib/format.js`). No se admiten fechas futuras. Los features y bugs se ordenan por
 `created_at`, así que cambiar la fecha también cambia su posición en la lista.
 
+**Un Epic o Feature no se puede marcar "Completado" con trabajo pendiente debajo.** Un
+Feature exige no tener bugs en `nuevo`/`en_progreso`; un Epic exige todos sus features en
+Completado y ningún bug abierto. Se hace cumplir en dos capas: la base la impone con triggers
+(`20261006120000_completion_guard.sql`, SQLSTATE `QA001`) y el frontend lo comprueba antes
+(`src/lib/completionGuard.js`, llamado desde `useEpics` y `useFeatures`) para avisar con un
+toast —desde el dropdown— o en línea —desde el formulario— sin mover el estado. El estado
+sigue siendo manual: la regla solo niega valores incoherentes, nunca los calcula.
+
 **Las acciones de fila siguen siempre la misma gramática**: las constructivas (agregar,
 notas) van con texto a la vista; editar y eliminar viven en el menú de tres puntos.
 Todas se construyen con `RowActions`.

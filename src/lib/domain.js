@@ -55,5 +55,31 @@ export function shouldFlagReopen(prevStatus, nextStatus) {
     return REOPEN_FROM.includes(prevStatus) && REOPEN_TO.includes(nextStatus);
 }
 
-/** Bugs que todavía requieren trabajo. Usado por las métricas del backlog. */
+/**
+ * Bugs que todavía requieren trabajo. Usado por las métricas del backlog y por
+ * la regla de completado. Duplicado en los triggers de
+ * supabase/migrations/20261006120000_completion_guard.sql.
+ */
 export const OPEN_BUG_STATUSES = ['nuevo', 'en_progreso'];
+
+/** Estado final de Epic y Feature. Solo se alcanza sin trabajo pendiente debajo. */
+export const COMPLETED_STATUS = 'completado';
+
+/** SQLSTATE con el que la base rechaza un completado incoherente. */
+export const COMPLETION_BLOCKED_CODE = 'QA001';
+
+const plural = (n, singular, pluralForm) => `${n} ${n === 1 ? singular : pluralForm}`;
+
+/**
+ * Texto de la alerta cuando algo no se puede completar. `pendingFeatures` solo
+ * aplica a Epics.
+ */
+export function completionBlockedMessage(kind, { openBugs = 0, pendingFeatures = 0 }) {
+    const reasons = [];
+    if (pendingFeatures > 0) reasons.push(plural(pendingFeatures, 'feature sin completar', 'features sin completar'));
+    if (openBugs > 0) reasons.push(plural(openBugs, 'bug abierto', 'bugs abiertos'));
+
+    const label = kind === 'epic' ? 'el Epic' : 'el Feature';
+    return `No se puede marcar ${label} como Completado: tiene ${reasons.join(' y ')}. `
+        + 'Resuélvelos o ciérralos primero.';
+}

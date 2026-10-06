@@ -1,8 +1,10 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@/components/ui/table';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FlaskConical, Plus, ChevronDown, ChevronUp } from 'lucide-react';
+import { FlaskConical, Plus, ChevronDown, ChevronUp, SearchX } from 'lucide-react';
+import { useEpics } from '@/hooks/useEpics';
+import { EpicFilter } from '@/components/testcases/EpicFilter';
 
 /**
  * Campos cortos: van como columnas de la tabla.
@@ -35,6 +37,8 @@ const DETAIL_FIELDS = [
  * reales. Se elimina en cuanto se conecte la tabla a la base de datos.
  */
 const EXAMPLE_ROW = {
+    id: 'example',
+    epic_id: null, // FK a epics (nullable); la columna real se crea con la migración de test_cases.
     case_id: 'TC-001',
     suite: 'Autenticación',
     application: 'Portal Web',
@@ -76,7 +80,16 @@ function TestCaseExpandedDetail({ testCase }) {
 }
 
 export default function TestCases() {
-    const [isExpanded, setIsExpanded] = useState(false);
+    const { epics, loading: epicsLoading } = useEpics();
+    const [expandedId, setExpandedId] = useState(null);
+    const [epicFilter, setEpicFilter] = useState(null);
+
+    // Hoy solo existe la fila de ejemplo; al conectar la tabla, esta lista sale de un hook.
+    const testCases = useMemo(() => [EXAMPLE_ROW], []);
+    const visibleCases = useMemo(
+        () => testCases.filter((tc) => epicFilter === null || tc.epic_id === epicFilter),
+        [testCases, epicFilter],
+    );
 
     return (
         // Sin tope de ancho: con 11 columnas, cada píxel cuenta.
@@ -113,6 +126,23 @@ export default function TestCases() {
             </div>
 
             <section className="animate-kanban-slide-up" style={{ animationDelay: '100ms' }}>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                    <div className="flex items-center gap-3">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                            Filtrar por:
+                        </span>
+                        <EpicFilter
+                            epics={epics}
+                            value={epicFilter}
+                            onChange={setEpicFilter}
+                            loading={epicsLoading}
+                        />
+                    </div>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/30 px-3 py-1.5 rounded-lg border border-border/40">
+                        {visibleCases.length} {visibleCases.length === 1 ? 'caso' : 'casos'}
+                    </p>
+                </div>
+
                 <Card className="border-border/40 overflow-hidden bg-card shadow-lg shadow-black/5 rounded-2xl p-0">
                     <CardContent className="p-0 bg-muted">
                         {/* Table ya trae su propio contenedor con overflow-x-auto;
@@ -135,38 +165,61 @@ export default function TestCases() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody className="bg-card">
-                                <Fragment>
-                                    <TableRow className={`border-b border-border/60 transition-colors ${isExpanded ? 'bg-muted/10' : 'hover:bg-muted/10'}`}>
-                                        <TableCell className="py-4 pl-6">
-                                            <button
-                                                onClick={() => setIsExpanded((v) => !v)}
-                                                title={isExpanded ? 'Ocultar detalle' : 'Ver detalle'}
-                                                className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${isExpanded ? 'text-primary bg-primary/10' : 'text-muted-foreground/50 hover:text-primary hover:bg-primary/5'}`}
-                                            >
-                                                {isExpanded
-                                                    ? <ChevronUp size={16} strokeWidth={2.5} />
-                                                    : <ChevronDown size={16} strokeWidth={2.5} />}
-                                            </button>
-                                        </TableCell>
-                                        {COLUMNS.map((column, index) => (
-                                            <TableCell
-                                                key={column.key}
-                                                className={`py-4 text-[13px] text-foreground/90 ${index === 0 ? 'font-bold' : ''}`}
-                                            >
-                                                {EXAMPLE_ROW[column.key]}
-                                            </TableCell>
-                                        ))}
-                                    </TableRow>
-                                    {isExpanded && (
-                                        <TableRow className="hover:bg-transparent border-none">
-                                            <TableCell colSpan={COLUMNS.length + 1} className="p-0">
-                                                <TestCaseExpandedDetail testCase={EXAMPLE_ROW} />
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </Fragment>
+                                {visibleCases.map((testCase) => {
+                                    const isOpen = expandedId === testCase.id;
+                                    return (
+                                        <Fragment key={testCase.id}>
+                                            <TableRow className={`border-b border-border/60 transition-colors ${isOpen ? 'bg-muted/10' : 'hover:bg-muted/10'}`}>
+                                                <TableCell className="py-4 pl-6">
+                                                    <button
+                                                        onClick={() => setExpandedId(isOpen ? null : testCase.id)}
+                                                        title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
+                                                        className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${isOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground/50 hover:text-primary hover:bg-primary/5'}`}
+                                                    >
+                                                        {isOpen
+                                                            ? <ChevronUp size={16} strokeWidth={2.5} />
+                                                            : <ChevronDown size={16} strokeWidth={2.5} />}
+                                                    </button>
+                                                </TableCell>
+                                                {COLUMNS.map((column, index) => (
+                                                    <TableCell
+                                                        key={column.key}
+                                                        className={`py-4 text-[13px] text-foreground/90 ${index === 0 ? 'font-bold' : ''}`}
+                                                    >
+                                                        {testCase[column.key]}
+                                                    </TableCell>
+                                                ))}
+                                            </TableRow>
+                                            {isOpen && (
+                                                <TableRow className="hover:bg-transparent border-none">
+                                                    <TableCell colSpan={COLUMNS.length + 1} className="p-0">
+                                                        <TestCaseExpandedDetail testCase={testCase} />
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })}
                             </TableBody>
                         </Table>
+
+                        {visibleCases.length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-16 text-center bg-muted/5">
+                                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/20 text-muted-foreground mb-3">
+                                    <SearchX className="h-7 w-7" />
+                                </div>
+                                <h3 className="text-sm font-bold text-foreground">
+                                    No hay casos de prueba para este Epic
+                                </h3>
+                                <Button
+                                    variant="outline"
+                                    className="mt-4 rounded-xl text-xs font-bold"
+                                    onClick={() => setEpicFilter(null)}
+                                >
+                                    Quitar filtro
+                                </Button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </section>
