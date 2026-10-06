@@ -67,9 +67,12 @@ export function TreeLabel({
  */
 export function RowActions({
     onComment, commentCount = 0, onEdit, onDelete, entityLabel,
-    onAdd, addLabel, addText,
+    onAdd, addLabel, addText, canManage = true,
 }) {
     const textButton = 'flex items-center gap-1.5 h-8 px-2.5 rounded-lg text-[11px] font-bold transition-colors';
+
+    // Rol sin permiso de gestión (viewer): fila de solo lectura, sin acciones.
+    if (!canManage) return null;
 
     return (
         <div className="flex items-center justify-end gap-1 pr-2">

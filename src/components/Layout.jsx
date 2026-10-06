@@ -1,16 +1,31 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Layers, Bug, FlaskConical, ShieldCheck, StickyNote, LogOut } from 'lucide-react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Layers, Bug, FlaskConical, ShieldCheck, StickyNote, LogOut, ClipboardCheck } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import { useAuth } from '../context/AuthContext';
+import { ROLES } from '../lib/domain';
+import { getInitials, getAvatarColor } from '../lib/format';
 
 const navItems = [
-  { to: '/backlog', icon: Layers, label: 'Backlog de QA' },
-  { to: '/bugs', icon: Bug, label: 'Tablero de Bugs' },
-  { to: '/casos-de-prueba', icon: FlaskConical, label: 'Casos de Prueba' },
-  { to: '/notes', icon: StickyNote, label: 'Notas del Equipo' },
+  { to: '/mis-bugs', icon: ClipboardCheck, label: 'Mis Bugs', roles: ['dev'] },
+  { to: '/backlog', icon: Layers, label: 'Backlog de QA', roles: ['qa', 'viewer'] },
+  { to: '/bugs', icon: Bug, label: 'Tablero de Bugs', roles: ['qa', 'viewer'] },
+  { to: '/casos-de-prueba', icon: FlaskConical, label: 'Casos de Prueba', roles: ['qa'] },
+  { to: '/notes', icon: StickyNote, label: 'Notas del Equipo', roles: ['qa'] },
 ];
 
 export default function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, signOut } = useAuth();
+
+  const items = navItems.filter((item) => !role || item.roles.includes(role));
+  const roleLabel = ROLES[role]?.label ?? '—';
+  const email = user?.email ?? '';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans">
@@ -32,7 +47,7 @@ export default function Layout() {
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6">
           <div className="space-y-1.5">
-            {navItems.map((item) => {
+            {items.map((item) => {
               const isActive = location.pathname === item.to;
               const Icon = item.icon;
               return (
@@ -59,18 +74,36 @@ export default function Layout() {
           </div>
         </nav>
 
-        {/* Footer: theme toggle + logout */}
-        <div className="flex items-center justify-between p-4">
-          <ThemeToggle />
-          <Link
-            to="/login"
-            title="Cerrar sesión"
-            aria-label="Cerrar sesión"
-            className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-muted px-3.5 text-xs font-bold text-sidebar-foreground/60 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut size={16} />
-            Cerrar sesión
-          </Link>
+        {/* Footer: usuario actual + theme toggle + logout */}
+        <div className="flex flex-col gap-3 p-4">
+          {email && (
+            <div className="flex items-center gap-2.5 px-1">
+              <div
+                className="flex items-center justify-center w-8 h-8 rounded-lg text-white text-[10px] font-black shadow-sm shrink-0"
+                style={{ backgroundColor: getAvatarColor(email) }}
+              >
+                {getInitials(email)}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-sidebar-foreground truncate">{email}</span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-sidebar-foreground/50">
+                  {roleLabel}
+                </span>
+              </div>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <ThemeToggle />
+            <button
+              onClick={handleSignOut}
+              title="Cerrar sesión"
+              aria-label="Cerrar sesión"
+              className="flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-muted px-3.5 text-xs font-bold text-sidebar-foreground/60 transition-colors hover:border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut size={16} />
+              Cerrar sesión
+            </button>
+          </div>
         </div>
 
       </aside>

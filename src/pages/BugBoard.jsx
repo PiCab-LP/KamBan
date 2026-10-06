@@ -1,8 +1,8 @@
-import { useEffect, useState, Fragment } from 'react';
+import { useEffect, useState, useMemo, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { GripVertical, Bug as BugIcon } from 'lucide-react';
+import { GripVertical, Bug as BugIcon, Code2 } from 'lucide-react';
 import {
   DndContext,
   closestCorners,
@@ -24,7 +24,9 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useBugs } from '../hooks/useBugs';
-import { BUG_COLUMNS, BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY } from '../lib/domain';
+import { useProfiles } from '../hooks/useProfiles';
+import { useAuth } from '../context/AuthContext';
+import { BUG_COLUMNS, BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY, DEV_STATUS } from '../lib/domain';
 import { StatusBadge, ReopenedBadge } from '../components/ui/StatusBadge';
 import { LoadingSkeleton } from '../components/ui/StatCard';
 import { BugFormSheet } from '../components/backlog/BugFormSheet';
@@ -78,10 +80,11 @@ function DroppableColumn({ id, title, description, count, children }) {
   );
 }
 
-const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false }) => {
+const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false, readOnly = false, devName }) => {
   const featureName = bug.features?.name;
   const epicName = bug.features?.epics?.name;
   const severityColor = BUG_SEVERITY[bug.severity]?.color || 'var(--primary)';
+  const devStage = bug.dev_status && bug.dev_status !== 'pendiente' ? DEV_STATUS[bug.dev_status] : null;
 
   return (
     <Card
@@ -92,16 +95,18 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false 
       `}
     >
       <div className="flex items-stretch min-h-[48px]">
-        <div
-          {...dragHandleProps}
-          className="flex items-center justify-center px-1.5 text-muted-foreground/45 bg-muted/5 border-r border-border/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70 transition-colors duration-200"
-        >
-          <GripVertical size={12} />
-        </div>
+        {!readOnly && (
+          <div
+            {...dragHandleProps}
+            className="flex items-center justify-center px-1.5 text-muted-foreground/45 bg-muted/5 border-r border-border/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70 transition-colors duration-200"
+          >
+            <GripVertical size={12} />
+          </div>
+        )}
 
         <div
-          className="flex-1 flex items-start gap-3 px-3 py-2.5 cursor-pointer select-none min-w-0"
-          onClick={() => onEdit(bug)}
+          className={`flex-1 flex items-start gap-3 px-3 py-2.5 select-none min-w-0 ${readOnly ? '' : 'cursor-pointer'}`}
+          onClick={readOnly ? undefined : () => onEdit(bug)}
         >
           <div
             className="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg mt-0.5"
@@ -119,10 +124,27 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false 
               <StatusBadge value={bug.severity} map={BUG_SEVERITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
               <StatusBadge value={bug.priority} map={BUG_PRIORITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
               {bug.is_reopened && <ReopenedBadge />}
+              {devStage && (
+                <span
+                  className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
+                  style={{
+                    backgroundColor: `color-mix(in oklch, ${devStage.color} 15%, transparent)`,
+                    color: devStage.color,
+                  }}
+                  title={`Avance del Dev: ${devStage.label}`}
+                >
+                  {devStage.label}
+                </span>
+              )}
             </div>
             {featureName && (
               <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
                 {epicName ? `${epicName} › ${featureName}` : featureName}
+              </p>
+            )}
+            {devName && (
+              <p className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground/60 truncate">
+                <Code2 size={10} className="shrink-0" /> {devName}
               </p>
             )}
           </div>
@@ -132,8 +154,11 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false 
   );
 };
 
-function SortableCard({ bug, onEdit, highlighted }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: bug.id });
+function SortableCard({ bug, onEdit, highlighted, readOnly, devName }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: bug.id,
+    disabled: readOnly,
+  });
 
   const style = {
     transform: CSS.Translate.toString(transform),
@@ -149,6 +174,8 @@ function SortableCard({ bug, onEdit, highlighted }) {
         dragHandleProps={{ ...attributes, ...listeners }}
         isOverlay={false}
         highlighted={highlighted}
+        readOnly={readOnly}
+        devName={devName}
       />
     </div>
   );
@@ -156,6 +183,14 @@ function SortableCard({ bug, onEdit, highlighted }) {
 
 export default function BugBoard() {
   const { bugs, loading, moveBug, updateBug } = useBugs();
+  const { role } = useAuth();
+  const { profiles } = useProfiles();
+  const readOnly = role === 'viewer';
+  const devNameById = useMemo(() => {
+    const map = {};
+    profiles.forEach((p) => { map[p.id] = p.email; });
+    return map;
+  }, [profiles]);
   const [items, setItems] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [editingBug, setEditingBug] = useState(null);
@@ -278,7 +313,9 @@ export default function BugBoard() {
         <div>
           <h1 className="text-[24px] font-bold text-foreground tracking-tight">Tablero de Bugs</h1>
           <p className="text-[13.5px] text-muted-foreground mt-1">
-            Arrastra un bug para cambiar su estado, o ábrelo para definir su severidad y prioridad. Los bugs se registran desde el Backlog de QA.
+            {readOnly
+              ? 'Vista de solo lectura de los bugs y su estado.'
+              : 'Arrastra un bug para cambiar su estado, o ábrelo para clasificarlo y asignarlo. Los bugs se registran desde el Backlog de QA.'}
           </p>
         </div>
       </div>
@@ -304,7 +341,14 @@ export default function BugBoard() {
                 >
                   <SortableContext items={columnBugs.map((b) => b.id)} strategy={verticalListSortingStrategy}>
                     {columnBugs.map((bug) => (
-                      <SortableCard key={bug.id} bug={bug} onEdit={handleEdit} highlighted={bug.id === highlightedId} />
+                      <SortableCard
+                        key={bug.id}
+                        bug={bug}
+                        onEdit={handleEdit}
+                        highlighted={bug.id === highlightedId}
+                        readOnly={readOnly}
+                        devName={bug.assigned_dev_id ? devNameById[bug.assigned_dev_id] : null}
+                      />
                     ))}
                   </SortableContext>
                 </DroppableColumn>

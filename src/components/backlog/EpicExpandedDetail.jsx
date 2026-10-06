@@ -29,7 +29,7 @@ function MessageRow({ children }) {
  * se insertan en la tabla del Epic (Backlog.jsx), de modo que Estado, Fecha y Acciones
  * caen en las mismas columnas que las del Epic.
  */
-export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, onFeatureFormOpened }) {
+export function EpicExpandedDetail({ epicId, canManage = true, onContentChange, openFeatureForm, onFeatureFormOpened }) {
     const {
         features, loading, fetchFeatures,
         createFeature, updateFeature, updateFeatureStatus, deleteFeature,
@@ -142,6 +142,7 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                                         value={feature.status}
                                         map={ENTITY_STATUS}
                                         onChange={(status) => updateFeatureStatus(feature.id, status)}
+                                        readOnly={!canManage}
                                     />
                                 </TableCell>
                                 <TableCell className="text-center text-sm font-medium text-muted-foreground/80">
@@ -149,6 +150,7 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                                 </TableCell>
                                 <TableCell className="py-2">
                                     <RowActions
+                                        canManage={canManage}
                                         entityLabel="feature"
                                         addLabel="Agregar bug"
                                         addText="Bug"
@@ -164,6 +166,7 @@ export function EpicExpandedDetail({ epicId, onContentChange, openFeatureForm, o
                             {isExpanded && (
                                 <FeatureBugList
                                     featureId={feature.id}
+                                    canManage={canManage}
                                     openBugForm={addBugFor === feature.id}
                                     onBugFormOpened={() => setAddBugFor(null)}
                                     onContentChange={handleBugChange}

@@ -50,7 +50,7 @@ function MessageRow({ children }) {
  * del Epic. Aquí no se muestran estado, severidad ni prioridad: se ven y se cambian
  * desde el Tablero de Bugs, al que lleva el enlace "Ver en el tablero".
  */
-export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugFormOpened }) {
+export function FeatureBugList({ featureId, canManage = true, onContentChange, openBugForm, onBugFormOpened }) {
     const {
         bugs, loading, createBug, updateBug, deleteBug,
     } = useBugs({ featureId });
@@ -119,14 +119,20 @@ export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugF
                                     className="shrink-0"
                                     style={{ color: BUG_ACCENT }}
                                 />
-                                <button
-                                    onClick={() => { setFormBug(bug); setFormOpen(true); }}
-                                    className="min-w-0 text-left"
-                                >
-                                    <span className="block text-[12px] font-semibold text-foreground truncate">
+                                {canManage ? (
+                                    <button
+                                        onClick={() => { setFormBug(bug); setFormOpen(true); }}
+                                        className="min-w-0 text-left"
+                                    >
+                                        <span className="block text-[12px] font-semibold text-foreground truncate">
+                                            {bug.title}
+                                        </span>
+                                    </button>
+                                ) : (
+                                    <span className="block min-w-0 text-[12px] font-semibold text-foreground truncate">
                                         {bug.title}
                                     </span>
-                                </button>
+                                )}
                             </div>
                         </TableCell>
 
@@ -148,6 +154,7 @@ export function FeatureBugList({ featureId, onContentChange, openBugForm, onBugF
 
                         <TableCell className="py-2">
                             <RowActions
+                                canManage={canManage}
                                 entityLabel="bug"
                                 commentCount={commentCounts[bug.id] || 0}
                                 onComment={() => setCommentTarget({ type: 'bug', id: bug.id, title: bug.title })}

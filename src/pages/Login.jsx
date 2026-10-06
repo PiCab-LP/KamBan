@@ -1,16 +1,32 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Mail, Lock, LogIn } from 'lucide-react';
+import { ShieldCheck, Mail, Lock, LogIn, Loader2 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import ThemeToggle from '../components/ThemeToggle';
 import { Card, CardHeader, CardContent } from '../components/ui/card';
+import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    navigate('/backlog');
+    setError('');
+    setSubmitting(true);
+    const result = await signIn(email.trim(), password);
+    setSubmitting(false);
+    if (result.success) {
+      // El índice redirige a cada rol a su pantalla de inicio.
+      navigate('/', { replace: true });
+    } else {
+      setError('Correo o contraseña incorrectos.');
+    }
   }
 
   return (
@@ -41,9 +57,13 @@ export default function Login() {
                   <Input
                     id="email"
                     type="email"
-                    placeholder="tu@correo.com"
+                    placeholder="tu@trez.pe"
                     className="pl-8"
-                    autoComplete="off"
+                    autoComplete="username"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                    disabled={submitting}
+                    required
                   />
                 </div>
               </div>
@@ -59,14 +79,24 @@ export default function Login() {
                     type="password"
                     placeholder="••••••••"
                     className="pl-8"
-                    autoComplete="off"
+                    autoComplete="current-password"
+                    value={password}
+                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                    disabled={submitting}
+                    required
                   />
                 </div>
               </div>
 
-              <Button type="submit" size="lg" className="mt-1 w-full">
-                <LogIn size={16} />
-                Ingresar
+              {error && (
+                <p className="text-xs font-bold text-destructive text-center -mt-1">
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" size="lg" className="mt-1 w-full" disabled={submitting}>
+                {submitting ? <Loader2 size={16} className="animate-spin" /> : <LogIn size={16} />}
+                {submitting ? 'Ingresando...' : 'Ingresar'}
               </Button>
             </form>
           </CardContent>

@@ -17,7 +17,8 @@ import {
 } from 'lucide-react';
 import { useEpics } from '../hooks/useEpics';
 import { useBacklogStats } from '../hooks/useBacklogStats';
-import { ENTITY_STATUS } from '../lib/domain';
+import { useAuth } from '../context/AuthContext';
+import { ENTITY_STATUS, canManageBacklog } from '../lib/domain';
 import { formatLocalDate, getInitials, getAvatarColor } from '../lib/format';
 import { StatusDropdown } from '../components/backlog/StatusDropdown';
 import { EpicFormModal } from '../components/backlog/EpicFormModal';
@@ -34,6 +35,8 @@ export default function Backlog() {
     const {
         epics, loading, createEpic, updateEpic, updateEpicStatus, deleteEpic,
     } = useEpics();
+    const { role } = useAuth();
+    const canManage = canManageBacklog(role);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
@@ -125,14 +128,16 @@ export default function Backlog() {
                             />
                         </div>
 
-                        <Button
-                            onClick={() => { setFormEpic(null); setFormOpen(true); }}
-                            className="gap-2 text-[13px] font-bold px-6 h-11 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
-                            style={{ background: 'var(--primary)', color: 'white' }}
-                        >
-                            <Plus size={18} strokeWidth={3} />
-                            Nuevo Epic
-                        </Button>
+                        {canManage && (
+                            <Button
+                                onClick={() => { setFormEpic(null); setFormOpen(true); }}
+                                className="gap-2 text-[13px] font-bold px-6 h-11 rounded-2xl transition-all hover:scale-105 active:scale-95 shadow-lg shadow-primary/20"
+                                style={{ background: 'var(--primary)', color: 'white' }}
+                            >
+                                <Plus size={18} strokeWidth={3} />
+                                Nuevo Epic
+                            </Button>
+                        )}
                     </div>
                 </div>
             </div>
@@ -249,6 +254,7 @@ export default function Backlog() {
                                                                 value={epic.status}
                                                                 map={ENTITY_STATUS}
                                                                 onChange={(status) => updateEpicStatus(epic.id, status)}
+                                                                readOnly={!canManage}
                                                             />
                                                         </TableCell>
                                                         <TableCell className="text-center font-medium text-muted-foreground/80">
@@ -256,6 +262,7 @@ export default function Backlog() {
                                                         </TableCell>
                                                         <TableCell className="py-5">
                                                             <RowActions
+                                                                canManage={canManage}
                                                                 entityLabel="epic"
                                                                 addLabel="Agregar feature"
                                                                 addText="Feature"
@@ -269,6 +276,7 @@ export default function Backlog() {
                                                     {isExpanded && (
                                                         <EpicExpandedDetail
                                                             epicId={epic.id}
+                                                            canManage={canManage}
                                                             openFeatureForm={addFeatureFor === epic.id}
                                                             onFeatureFormOpened={() => setAddFeatureFor(null)}
                                                             onContentChange={() => setChildCount((n) => n + 1)}

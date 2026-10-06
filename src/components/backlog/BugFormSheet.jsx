@@ -3,9 +3,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Bug as BugIcon } from 'lucide-react';
+import { Bug as BugIcon, ShieldCheck, Code2 } from 'lucide-react';
 import { BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY } from '@/lib/domain';
 import { toDateInputValue, dateInputToTimestamp } from '@/lib/format';
+import { useProfiles } from '@/hooks/useProfiles';
+import { EntityPicker } from '@/components/ui/EntityPicker';
 import { StatusPills } from './StatusPills';
 import { CreatedAtField } from './CreatedAtField';
 import { BugImagesPlaceholder } from './BugImagesPlaceholder';
@@ -31,8 +33,13 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
     const [severity, setSeverity] = useState('media');
     const [priority, setPriority] = useState('media');
     const [createdAt, setCreatedAt] = useState('');
+    const [assignedQaId, setAssignedQaId] = useState(null);
+    const [assignedDevId, setAssignedDevId] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    // Para los selectores de asignación (solo relevantes en modo tablero).
+    const { qaUsers, devUsers } = useProfiles({ enabled: isBoard });
 
     useEffect(() => {
         if (!open) return;
@@ -42,13 +49,30 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
         setSeverity(bug?.severity || 'media');
         setPriority(bug?.priority || 'media');
         setCreatedAt(toDateInputValue(bug?.created_at));
+        setAssignedQaId(bug?.assigned_qa_id || null);
+        setAssignedDevId(bug?.assigned_dev_id || null);
         setError('');
     }, [open, bug]);
+
+    const qaGroups = [{
+        type: 'qa', label: 'QA', icon: ShieldCheck,
+        items: qaUsers.map((u) => ({ id: u.id, name: u.email })),
+    }];
+    const devGroups = [{
+        type: 'dev', label: 'Dev', icon: Code2,
+        items: devUsers.map((u) => ({ id: u.id, name: u.email })),
+    }];
 
     const handleSave = async () => {
         let payload;
         if (isBoard) {
-            payload = { status, severity, priority };
+            payload = {
+                status,
+                severity,
+                priority,
+                assigned_qa_id: assignedQaId,
+                assigned_dev_id: assignedDevId,
+            };
         } else {
             const trimmed = title.trim();
             if (!trimmed) {
@@ -112,6 +136,40 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
                             <StatusPills label="Estado" map={BUG_STATUS} value={status} onChange={setStatus} disabled={saving} />
                             <StatusPills label="Severidad" map={BUG_SEVERITY} value={severity} onChange={setSeverity} disabled={saving} />
                             <StatusPills label="Prioridad" map={BUG_PRIORITY} value={priority} onChange={setPriority} disabled={saving} />
+
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                    QA asignado
+                                </p>
+                                <EntityPicker
+                                    groups={qaGroups}
+                                    value={assignedQaId ? { type: 'qa', id: assignedQaId } : null}
+                                    onChange={(v) => setAssignedQaId(v?.id ?? null)}
+                                    noneLabel="Sin asignar"
+                                    searchPlaceholder="Buscar QA…"
+                                    disabled={saving}
+                                />
+                                <p className="text-[10px] text-muted-foreground/50">
+                                    Responsable de verificar y cerrar el bug.
+                                </p>
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                                    Dev asignado
+                                </p>
+                                <EntityPicker
+                                    groups={devGroups}
+                                    value={assignedDevId ? { type: 'dev', id: assignedDevId } : null}
+                                    onChange={(v) => setAssignedDevId(v?.id ?? null)}
+                                    noneLabel="Sin asignar"
+                                    searchPlaceholder="Buscar Dev…"
+                                    disabled={saving}
+                                />
+                                <p className="text-[10px] text-muted-foreground/50">
+                                    Solo él verá este bug en "Mis Bugs" y podrá marcar su avance.
+                                </p>
+                            </div>
                         </>
                     ) : (
                         <>

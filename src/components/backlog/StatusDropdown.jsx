@@ -8,8 +8,13 @@ import {
 import { StatusBadge } from '@/components/ui/StatusBadge';
 
 /** Badge de estado que al pulsarlo despliega las demás opciones. */
-export function StatusDropdown({ value, map, onChange, align = 'start' }) {
+export function StatusDropdown({ value, map, onChange, align = 'start', readOnly = false }) {
     const [open, setOpen] = useState(false);
+
+    // Solo lectura (p. ej. rol viewer): el badge sin menú ni cambios.
+    if (readOnly) {
+        return <StatusBadge value={value} map={map} />;
+    }
 
     return (
         <DropdownMenu open={open} onOpenChange={setOpen}>

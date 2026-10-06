@@ -6,7 +6,8 @@ import { positionAtEnd, positionBetween } from '../lib/position';
 
 const BUG_FIELDS = `
     id, feature_id, title, description, status, severity, priority,
-    is_reopened, position, created_at
+    is_reopened, position, created_at,
+    creator_id, assigned_qa_id, assigned_dev_id, dev_status
 `;
 
 /**
@@ -75,7 +76,11 @@ export function useBugs({ featureId = null } = {}) {
         // el dropdown: marcar "Reabierto" y caer al final de la columna destino.
         if (bug && payload.status && payload.status !== bug.status) {
             reopening = shouldFlagReopen(bug.status, payload.status);
-            if (reopening) payload.is_reopened = true;
+            if (reopening) {
+                payload.is_reopened = true;
+                // Reabrir reinicia el ciclo del Dev: su avance vuelve a cero.
+                payload.dev_status = 'pendiente';
+            }
             if (isBoardMode) {
                 payload.position = positionAtEnd(bugs.filter((b) => b.status === payload.status));
             }
@@ -106,7 +111,8 @@ export function useBugs({ featureId = null } = {}) {
         const payload = {
             status,
             position: positionBetween(prevItem, nextItem),
-            ...(reopening && { is_reopened: true }),
+            // Reabrir reinicia el avance del Dev (ver updateBug).
+            ...(reopening && { is_reopened: true, dev_status: 'pendiente' }),
         };
 
         try {
@@ -119,6 +125,24 @@ export function useBugs({ featureId = null } = {}) {
             console.error('Error moving bug:', err.message);
             showToast('No se pudo guardar el cambio', 'error');
             await fetchBugs();
+            return { success: false, error: err.message };
+        }
+    };
+
+    /**
+     * Única escritura que el Dev puede hacer sobre un bug: su avance de corrección.
+     * El RLS y el trigger `guard_dev_bug_update` (SQLSTATE QA002) lo respaldan.
+     */
+    const setDevStatus = async (id, devStatus) => {
+        try {
+            const { error } = await supabase.from('bugs').update({ dev_status: devStatus }).eq('id', id);
+            if (error) throw error;
+            setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, dev_status: devStatus } : b)));
+            showToast('Avance actualizado', 'success');
+            return { success: true };
+        } catch (err) {
+            console.error('Error updating dev_status:', err.message);
+            showToast('No se pudo actualizar el avance', 'error');
             return { success: false, error: err.message };
         }
     };
@@ -144,6 +168,7 @@ export function useBugs({ featureId = null } = {}) {
         createBug,
         updateBug,
         moveBug,
+        setDevStatus,
         deleteBug,
     };
 }

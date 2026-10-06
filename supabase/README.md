@@ -23,7 +23,9 @@ pegando cada archivo completo y en este orden:
 | 0 | `introspection/00_inspect_legacy.sql` | **Solo lectura.** Guardar la salida. |
 | 1 | `migrations/20261002120000_drop_legacy.sql` | Borra el dominio viejo. **Destructivo.** |
 | 2 | `migrations/20261002120100_create_qa_schema.sql` | Crea epics, features, bugs, comments, notes. |
-| 3 | `migrations/20261002120200_rls_policies.sql` | Activa RLS. |
+| 3 | `migrations/20261002120200_rls_policies.sql` | Activa RLS (permisiva, sin auth). |
+| 4 | `migrations/20261006120000_completion_guard.sql` | Triggers: no completar con trabajo pendiente. |
+| 5 | `migrations/20261006130000_auth_roles.sql` | **Auth real:** `profiles`, roles, asignación de bugs y RLS estricto. Reemplaza lo permisivo del paso 3. |
 | 4 | `migrations/20261006120000_completion_guard.sql` | Triggers que impiden completar un Epic/Feature con trabajo pendiente. |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
@@ -42,6 +44,8 @@ epics ──┬── features ──┬── bugs ──┬── comments (bu
 La jerarquía borra en **CASCADE** hacia abajo: borrar un Epic elimina sus Features y
 sus Bugs. Las notas usan **SET NULL** porque son contenido escrito a mano y no deben
 desaparecer en silencio: pasan a ser globales.
+
+Mapeo completo de cada tabla, sus columnas y los estados que acepta: [MODELO.md](MODELO.md).
 
 ## Decisiones
 
@@ -77,12 +81,26 @@ Epics y Features se ordenan por `created_at`. Es `numeric` para permitir posicio
 fraccionarias: insertar entre dos vecinos es un `UPDATE` de una sola fila en vez de
 reescribir la lista entera. Ver `src/lib/position.js`.
 
-## Seguridad
+## Autenticación y roles (migración 5)
 
-**Las políticas RLS son permisivas a propósito y no protegen nada.** El proyecto no
-tiene autenticación: la anon key viaja en el bundle de Vite, es pública, y cualquiera
-con DevTools puede leer y escribir todas las tablas vía curl.
+`20261006130000_auth_roles.sql` reemplaza las políticas permisivas del paso 3 por **RLS
+estricto por rol** y agrega el flujo de asignación de bugs. A partir de ahí la app debe
+autenticarse (Supabase Auth, email + contraseña); el rol `anon` pierde todo acceso.
 
-No meter datos sensibles ni de clientes reales mientras esto siga así. El archivo
-`20261002120200_rls_policies.sql` lleva el detalle completo y el checklist para cuando
-se añada autenticación.
+- **`profiles`** (`id` → `auth.users`, `email`, `role` ∈ `qa`/`dev`/`viewer`). Se crea sola
+  (rol `viewer`) con un trigger sobre `auth.users`. El rol real se fija a mano en el dashboard.
+- **`user_role()`** (`security definer`): lee el rol del usuario actual sin recursar RLS; lo usan
+  todas las políticas.
+- **`bugs`** gana `creator_id` (`default auth.uid()`), `assigned_qa_id`, `assigned_dev_id` y
+  `dev_status` (`pendiente`/`corregido`/`revisado`).
+- **Reglas:** qa escribe todo; viewer solo lee; **dev solo lee sus bugs asignados y solo cambia
+  `dev_status`** — lo garantizan la política de `bugs` y el trigger `guard_dev_bug_update`
+  (SQLSTATE `QA002`, mismo patrón "trigger que solo valida" que `completion_guard`).
+- Valores de rol y `dev_status` **duplicados** en `src/lib/domain.js` (`ROLES`, `DEV_STATUS`).
+
+> **Bootstrap:** al aplicar la migración todas las cuentas son `viewer`. Hay que poner al menos
+> un `qa` en `profiles` desde el dashboard para poder operar (hay un `update` de ejemplo al final
+> del archivo).
+
+El checklist histórico de "cómo salir de lo permisivo" sigue en la cabecera de
+`20261002120200_rls_policies.sql`; esta migración lo ejecuta.

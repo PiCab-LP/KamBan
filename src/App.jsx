@@ -4,26 +4,84 @@ import Backlog from './pages/Backlog';
 import BugBoard from './pages/BugBoard';
 import TestCases from './pages/TestCases';
 import Notes from './pages/Notes';
+import MyBugs from './pages/MyBugs';
 import Login from './pages/Login';
 import { ToastProvider } from './context/ToastContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { homePathForRole } from './lib/domain';
+
+/** El índice manda a cada rol a su pantalla de inicio (Dev → Mis bugs). */
+function RoleIndex() {
+  const { role } = useAuth();
+  return <Navigate to={homePathForRole(role)} replace />;
+}
 
 function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Navigate to="/backlog" replace />} />
-              <Route path="backlog" element={<Backlog />} />
-              <Route path="bugs" element={<BugBoard />} />
-              <Route path="casos-de-prueba" element={<TestCases />} />
-              <Route path="notes" element={<Notes />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/"
+                element={(
+                  <ProtectedRoute>
+                    <Layout />
+                  </ProtectedRoute>
+                )}
+              >
+                <Route index element={<RoleIndex />} />
+                <Route
+                  path="backlog"
+                  element={(
+                    <ProtectedRoute allow={['qa', 'viewer']}>
+                      <Backlog />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="bugs"
+                  element={(
+                    <ProtectedRoute allow={['qa', 'viewer']}>
+                      <BugBoard />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="casos-de-prueba"
+                  element={(
+                    <ProtectedRoute allow={['qa']}>
+                      <TestCases />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="notes"
+                  element={(
+                    <ProtectedRoute allow={['qa']}>
+                      <Notes />
+                    </ProtectedRoute>
+                  )}
+                />
+                <Route
+                  path="mis-bugs"
+                  element={(
+                    <ProtectedRoute allow={['dev']}>
+                      <MyBugs />
+                    </ProtectedRoute>
+                  )}
+                />
+              </Route>
+              {/* Cualquier ruta desconocida vuelve a la raíz; si no hay sesión,
+                  ProtectedRoute la manda a /login. */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
   );

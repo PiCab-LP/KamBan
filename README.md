@@ -67,15 +67,17 @@ caso, sigue el orden que indica [supabase/README.md](supabase/README.md).
 
 ## Rutas
 
-| Ruta | Pantalla |
-|---|---|
-| `/login` | Login — **mockup**, no valida nada, solo navega a `/backlog` (y "Cerrar sesión" solo vuelve aquí) |
-| `/backlog` | Backlog de QA: una sola tabla (Elemento · Estado · Fecha de creación · Acciones) donde los Features y Bugs son filas anidadas bajo su Epic |
-| `/bugs` | Tablero de Bugs: 4 columnas, drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) |
-| `/casos-de-prueba` | Casos de Prueba — en construcción |
-| `/notes` | Notas del equipo |
+| Ruta | Pantalla | Roles |
+|---|---|---|
+| `/login` | Login real con email + contraseña (Supabase Auth) | público |
+| `/backlog` | Backlog de QA: una sola tabla (Elemento · Estado · Fecha de creación · Acciones) donde los Features y Bugs son filas anidadas bajo su Epic | qa (edita), viewer (solo lee) |
+| `/bugs` | Tablero de Bugs: 4 columnas, drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) y se asigna | qa (edita), viewer (solo lee) |
+| `/mis-bugs` | Mis Bugs: los bugs asignados al Dev; marca su avance (Corregido/Revisado) y comenta | dev |
+| `/casos-de-prueba` | Casos de Prueba — en construcción | qa |
+| `/notes` | Notas del equipo | qa |
 
-`/` redirige a `/backlog`.
+`/` redirige según el rol: el Dev a `/mis-bugs`, los demás a `/backlog`. Toda ruta exige sesión
+(`ProtectedRoute`); sin ella se va a `/login`. Ver [Autenticación y roles](#autenticación-y-roles).
 
 ## Estructura
 
@@ -171,12 +173,36 @@ Epic no debe hacer desaparecer notas escritas a mano, simplemente pasan a ser gl
 
 Detalles completos y decisiones de esquema en [supabase/README.md](supabase/README.md).
 
-## Seguridad
+## Autenticación y roles
 
-**La aplicación no tiene autenticación.** El login es un mockup y las políticas RLS son
-permisivas (`using(true)`) por necesidad. La anon key viaja dentro del bundle de Vite,
-así que es pública: cualquiera con DevTools puede leer y escribir todas las tablas.
+La app usa **Supabase Auth (email + contraseña)** con RLS estricto por rol. No hay registro
+público: las cuentas se crean invitándolas desde el **dashboard de Supabase**.
 
-**No metas datos sensibles ni de clientes reales mientras esto siga así.** El checklist
-para añadir autenticación está en
-[supabase/migrations/20261002120200_rls_policies.sql](supabase/migrations/20261002120200_rls_policies.sql).
+**Tres roles**, guardados en la tabla `profiles` (uno por usuario). El rol lo fija un admin a
+mano en el dashboard; toda cuenta nace como `viewer`.
+
+| Rol | Puede |
+|---|---|
+| `qa` | Todo: crear, editar y borrar Epics, Features, Bugs, Casos y Notas; clasificar y **asignar** bugs. |
+| `dev` | Solo ve **sus** bugs asignados (`/mis-bugs`), marca su avance (`dev_status`: Pendiente → Corregido → Revisado) y comenta en ellos. Nada más. |
+| `viewer` | Solo lectura de Epics, Features y Bugs. |
+
+**Asignación de bugs.** Al registrarse, el bug toma como **creador** al usuario del JWT
+(`creator_id default auth.uid()` en la base, no se confía en el cliente). Desde la hoja de
+clasificación del Tablero, cualquier QA puede asignar un **QA responsable** (verifica y cierra)
+y un **Dev** (lo corrige). La asignación es opcional y editable.
+
+**`dev_status` es independiente del estado del tablero.** El Dev marca su avance; el `status`
+(Nuevo/En progreso/Resuelto/Cerrado) lo sigue manejando QA. No se deriva uno del otro. Al
+**reabrir** un bug, `dev_status` vuelve a `pendiente`.
+
+**El RLS es la barrera real** (`20261006130000_auth_roles.sql`): el Dev a nivel de base solo
+puede leer sus bugs y solo cambiar `dev_status` (lo respalda el trigger `guard_dev_bug_update`,
+SQLSTATE `QA002`); el Viewer solo lee; QA escribe. El gating de la UI (ocultar botones) es solo
+comodidad encima de eso.
+
+> **Bootstrap:** tras aplicar la migración, **todas las cuentas son `viewer`**. Hay que entrar al
+> dashboard y poner al menos un `qa` en `profiles` para poder operar.
+
+La anon key sigue en el bundle y es pública, pero ya **no** da acceso: `anon` fue revocado y toda
+política exige un usuario autenticado con el rol adecuado.

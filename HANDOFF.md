@@ -156,11 +156,35 @@ opciones son bloquear esas acciones, mostrar una advertencia, o aceptarlo. Ojo c
 "bajar el padre a En progreso automáticamente": sería estado derivado, rechazado antes (ver
 *Estados manuales, nunca derivados*).
 
-### 5. Sin autenticación
+### 5. Autenticación y roles — implementado, falta aplicar la migración y probar 🔴
 
-Ver el aviso del [README](README.md#seguridad). No es un olvido, es una decisión
-consciente con su checklist de salida documentado en el SQL de RLS. El login y el
-"Cerrar sesión" son solo navegación.
+Se construyó autenticación real (Supabase Auth, email + contraseña) con tres roles
+(**qa / dev / viewer**), RLS estricto por rol y asignación de bugs. `lint` y `build` pasan, pero
+**no se probó contra la base real** (no había `.env` ni la migración aplicada en esta máquina).
+
+Qué se hizo (detalle en [README](README.md#autenticación-y-roles)):
+
+- Migración `supabase/migrations/20261006130000_auth_roles.sql`: tabla `profiles` con rol,
+  `user_role()`, columnas `creator_id`/`assigned_qa_id`/`assigned_dev_id`/`dev_status` en `bugs`,
+  RLS por rol y el trigger `guard_dev_bug_update` (SQLSTATE `QA002`).
+- Frontend: `AuthContext`, `ProtectedRoute`, login real, logout, nav y acciones filtradas por rol,
+  selectores de asignación en la hoja de clasificación, y la pantalla `/mis-bugs` del Dev.
+
+**Para dejarlo funcionando:**
+
+1. Aplicar la migración 5 en el SQL Editor (ver [supabase/README.md](supabase/README.md)).
+2. Crear 3 cuentas de prueba en el dashboard (Authentication → Users) y, en `public.profiles`,
+   poner una en `qa`, otra en `dev`, otra en `viewer`. **Sin al menos un `qa` no se puede operar**
+   (todas nacen `viewer`).
+3. Probar los tres flujos (ver la sección de verificación del plan): QA hace todo y asigna; el Dev
+   solo ve sus bugs y solo mueve `dev_status`; el Viewer solo lee.
+
+**Pendientes menores conocidos:**
+
+- En `CommentsPanel` el botón de borrar comentario se muestra siempre; para el Dev ese borrado lo
+  rechaza el RLS (QA borra comentarios). Conviene ocultarlo según el rol.
+- La base no valida que el `assigned_dev_id` sea de rol `dev` (ni el QA de rol `qa`); hoy lo
+  garantiza solo la UI, que ofrece cada lista por separado.
 
 ### 6. Fechas de creación editables: `created_at` ya no es un registro fiable
 
@@ -278,4 +302,7 @@ cada píxel cuenta.
 | Fecha de creación de features y bugs | `CreatedAtField.jsx` + `dateInputToTimestamp` en `src/lib/format.js` |
 | El tablero, su drag y la clasificación de bugs | `src/pages/BugBoard.jsx` + `src/lib/position.js` + `BugFormSheet` (modo `board`) |
 | Casos de Prueba | `src/pages/TestCases.jsx` (`COLUMNS` y `DETAIL_FIELDS` al inicio) |
+| Sesión y rol del usuario | `src/context/AuthContext.jsx` + `src/components/auth/ProtectedRoute.jsx` |
+| Qué puede cada rol | `src/lib/domain.js` (`ROLES`, `canManageBacklog`) + la migración `20261006130000_auth_roles.sql` |
+| La pantalla del Dev | `src/pages/MyBugs.jsx` + `setDevStatus` en `src/hooks/useBugs.js` |
 | El esquema SQL | `supabase/README.md` y `supabase/migrations/` |

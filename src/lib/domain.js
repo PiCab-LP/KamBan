@@ -83,3 +83,43 @@ export function completionBlockedMessage(kind, { openBugs = 0, pendingFeatures =
     return `No se puede marcar ${label} como Completado: tiene ${reasons.join(' y ')}. `
         + 'Resuélvelos o ciérralos primero.';
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Autenticación y roles. Duplicado en los CHECK de
+// supabase/migrations/20261006130000_auth_roles.sql: al cambiar uno, cambiar el otro.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Roles del sistema. Se guardan en la tabla `profiles` y los fija un admin a mano
+ * desde el dashboard de Supabase (la app no los edita).
+ *   qa     — agrega, edita y borra todo.
+ *   dev    — solo ve sus bugs asignados y solo cambia su dev_status.
+ *   viewer — solo lectura de epics, features y bugs.
+ */
+export const ROLES = {
+    qa:     { label: 'QA',     color: 'oklch(0.58 0.20 277)' },
+    dev:    { label: 'Dev',    color: 'oklch(0.70 0.16 60)' },
+    viewer: { label: 'Viewer', color: 'oklch(0.60 0.02 260)' },
+};
+
+/**
+ * Avance de corrección que marca el DEV asignado, independiente del estado del
+ * tablero (que maneja QA). Se resetea a 'pendiente' al reabrir el bug.
+ */
+export const DEV_STATUS = {
+    pendiente: { label: 'Pendiente', color: 'oklch(0.60 0.02 260)' },
+    corregido: { label: 'Corregido', color: 'oklch(0.70 0.16 60)' },
+    revisado:  { label: 'Revisado',  color: 'oklch(0.60 0.16 150)' },
+};
+
+/** Transiciones de dev_status que el Dev puede elegir desde "Mis bugs". */
+export const DEV_STATUS_ORDER = ['pendiente', 'corregido', 'revisado'];
+
+/** SQLSTATE con el que la base rechaza que un dev cambie algo distinto de dev_status. */
+export const DEV_UPDATE_BLOCKED_CODE = 'QA002';
+
+/** ¿Este rol puede crear/editar/borrar el backlog (epics, features, bugs)? */
+export const canManageBacklog = (role) => role === 'qa';
+
+/** Pantalla de inicio de cada rol tras entrar. El Dev no usa el backlog. */
+export const homePathForRole = (role) => (role === 'dev' ? '/mis-bugs' : '/backlog');
