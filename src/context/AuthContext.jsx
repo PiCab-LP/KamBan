@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const AuthContext = createContext(null);
@@ -12,6 +12,9 @@ export function AuthProvider({ children }) {
     const [session, setSession] = useState(null);
     const [role, setRole] = useState(null);
     const [loading, setLoading] = useState(true);
+    // Último usuario cuyo rol ya resolvimos. Sirve para NO volver a bloquear la UI
+    // (spinner) en cada refresh de token del mismo usuario.
+    const resolvedUserRef = useRef(null);
 
     const loadRole = useCallback(async (userId) => {
         if (!userId) {
@@ -24,8 +27,10 @@ export function AuthProvider({ children }) {
             .eq('id', userId)
             .maybeSingle();
         if (error) {
+            // Ante un error transitorio, caemos al rol menos privilegiado (lectura)
+            // en vez de dejar el rol en null: null haría que la UI no sepa qué mostrar.
             console.error('Error loading role:', error.message);
-            setRole(null);
+            setRole('viewer');
             return;
         }
         // Si el profile aún no existe (primer login antes del trigger), viewer por defecto.
@@ -35,23 +40,37 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         let active = true;
 
-        // Aplica una sesión y carga el rol. OJO: no se puede hacer `await` de una
-        // consulta a Supabase DENTRO del callback de onAuthStateChange — bloquea el
-        // lock interno de auth y getSession() nunca resuelve (deadlock conocido, deja
-        // la app colgada en el spinner). Por eso la consulta del rol se difiere con
-        // setTimeout(0), fuera del lock. Y loading SIEMPRE termina apagándose.
+        // Aplica una sesión y carga el rol. Dos cuidados:
+        //  1) No se puede hacer `await` de una consulta a Supabase DENTRO del callback
+        //     de onAuthStateChange — bloquea el lock interno de auth y getSession()
+        //     nunca resuelve (deadlock conocido). Por eso el rol se difiere con
+        //     setTimeout(0), fuera del lock.
+        //  2) Mientras no sepamos el rol de una sesión NUEVA, dejamos `loading` en true
+        //     para no pintar un instante la UI del rol equivocado. En un refresh de
+        //     token del MISMO usuario el rol ya es válido: refrescamos en 2º plano sin
+        //     spinner.
         const applySession = (nextSession) => {
             if (!active) return;
             setSession(nextSession);
-            const userId = nextSession?.user?.id;
+            const userId = nextSession?.user?.id ?? null;
+
             if (!userId) {
+                resolvedUserRef.current = null;
                 setRole(null);
                 setLoading(false);
                 return;
             }
+
+            if (resolvedUserRef.current === userId) {
+                setTimeout(() => { if (active) loadRole(userId); }, 0);
+                return;
+            }
+
+            setLoading(true);
             setTimeout(async () => {
                 if (!active) return;
                 await loadRole(userId);
+                resolvedUserRef.current = userId;
                 if (active) setLoading(false);
             }, 0);
         };
@@ -94,6 +113,7 @@ export function AuthProvider({ children }) {
         } finally {
             // Pase lo que pase con la llamada (p. ej. sin red), la sesión local se
             // borra: supabase-js limpia su storage y aquí vaciamos el estado.
+            resolvedUserRef.current = null;
             setSession(null);
             setRole(null);
         }

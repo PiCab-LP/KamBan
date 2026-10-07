@@ -18,7 +18,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const { user, role, signOut } = useAuth();
 
-  const items = navItems.filter((item) => !role || item.roles.includes(role));
+  const items = navItems.filter((item) => role && item.roles.includes(role));
   const roleLabel = ROLES[role]?.label ?? '—';
   const email = user?.email ?? '';
 
