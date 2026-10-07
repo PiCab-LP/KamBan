@@ -41,7 +41,7 @@ function DroppableColumn({ id, title, description, count, children }) {
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col flex-shrink-0 w-[300px] rounded-3xl transition-all duration-300 ease-in-out border-2 ${
+      className={`flex flex-col flex-shrink-0 w-[272px] xl:w-[300px] rounded-3xl transition-all duration-300 ease-in-out border-2 ${
         isOver ? 'bg-primary/5 border-primary/30 scale-[1.02] shadow-xl' : 'bg-muted/30 border-transparent'
       }`}
     >
@@ -308,7 +308,7 @@ export default function BugBoard() {
   if (loading) return <LoadingSkeleton />;
 
   return (
-    <div className="p-8 animate-kanban-fade-in">
+    <div className="p-4 lg:p-6 xl:p-8 animate-kanban-fade-in">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-[24px] font-bold text-foreground tracking-tight">Tablero de Bugs</h1>

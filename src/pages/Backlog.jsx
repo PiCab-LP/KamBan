@@ -187,7 +187,7 @@ export default function Backlog() {
                                     nombre del Epic, del Feature o del Bug (según la sangría) y las
                                     demás son comunes. Layout fijo para que los anchos no bailen al
                                     desplegar filas. */}
-                                <Table className="table-fixed min-w-[1000px]">
+                                <Table className="table-fixed min-w-[900px] xl:min-w-[1000px]">
                                     <TableHeader className="bg-muted border-b-2 border-border">
                                         <TableRow className="hover:bg-transparent border-none">
                                             <TableHead className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 pl-8 h-16">

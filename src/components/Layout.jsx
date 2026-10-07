@@ -29,9 +29,9 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-background text-foreground font-sans">
-      <aside className="flex flex-col shrink-0 w-[260px] bg-sidebar border-r border-sidebar-border shadow-sm">
+      <aside className="flex flex-col shrink-0 w-[216px] xl:w-[260px] bg-sidebar border-r border-sidebar-border shadow-sm">
         {/* Logo */}
-        <div className="p-8">
+        <div className="p-6 xl:p-8">
           <div className="flex items-center gap-3 group cursor-default">
             <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-sidebar-primary shadow-sm transition-transform group-hover:scale-105 duration-300">
               <ShieldCheck size={18} strokeWidth={2.5} className="text-sidebar-primary-foreground" />
@@ -45,7 +45,7 @@ export default function Layout() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6">
+        <nav className="flex-1 px-3 py-5 xl:px-4 xl:py-6">
           <div className="space-y-1.5">
             {items.map((item) => {
               const isActive = location.pathname === item.to;

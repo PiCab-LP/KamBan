@@ -85,20 +85,18 @@ export default function MyBugs() {
                                         {bug.is_reopened && <ReopenedBadge />}
                                     </div>
 
-                                    <div className="flex items-end justify-between gap-4 pt-1 border-t border-border/40">
-                                        <div className="pt-4">
-                                            <StatusPills
-                                                label="Mi avance"
-                                                map={DEV_STATUS}
-                                                value={bug.dev_status || 'pendiente'}
-                                                onChange={(next) => handleDevStatus(bug, next)}
-                                                disabled={savingId === bug.id}
-                                            />
-                                        </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pt-4 border-t border-border/40">
+                                        <StatusPills
+                                            label="Mi avance"
+                                            map={DEV_STATUS}
+                                            value={bug.dev_status || 'pendiente'}
+                                            onChange={(next) => handleDevStatus(bug, next)}
+                                            disabled={savingId === bug.id}
+                                        />
                                         <Button
                                             variant="outline"
                                             onClick={() => setCommentTarget({ type: 'bug', id: bug.id, title: bug.title })}
-                                            className="h-9 gap-2 text-xs font-bold rounded-xl shrink-0"
+                                            className="h-9 gap-2 text-xs font-bold rounded-xl shrink-0 self-start sm:self-auto"
                                         >
                                             <MessageSquare size={14} />
                                             Comentarios
