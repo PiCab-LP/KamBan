@@ -13,7 +13,7 @@ const sameDay = (a, b) => new Date(a).toDateString() === new Date(b).toDateStrin
 export function NoteCard({ note, profilesById = {}, onEdit, onDelete, onTogglePin }) {
     const link = getNoteLink(note);
     const LinkIcon = link ? LINK_ICONS[link.type] : Globe;
-    const authorEmail = note.created_by ? profilesById[note.created_by] : null;
+    const authorName = note.created_by ? profilesById[note.created_by] : null;
 
     // El trigger pone updated_at = now() en cada UPDATE; en el INSERT es igual a
     // created_at. Consideramos "editada" solo si hay más de 1s de diferencia.
@@ -53,15 +53,15 @@ export function NoteCard({ note, profilesById = {}, onEdit, onDelete, onTogglePi
 
             {/* 3 · Metadatos (terciario): autor + fechas */}
             <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/10 space-y-2">
-                {authorEmail && (
+                {authorName && (
                     <div className="flex items-center gap-2 min-w-0">
                         <div
                             className="flex items-center justify-center w-6 h-6 rounded-lg text-white text-[9px] font-black shrink-0"
-                            style={{ backgroundColor: getAvatarColor(authorEmail) }}
+                            style={{ backgroundColor: getAvatarColor(authorName) }}
                         >
-                            {getInitials(authorEmail)}
+                            {getInitials(authorName)}
                         </div>
-                        <span className="text-[11px] font-semibold opacity-70 truncate">{authorEmail}</span>
+                        <span className="text-[11px] font-semibold opacity-70 truncate">{authorName}</span>
                     </div>
                 )}
                 <div className="flex items-center justify-between gap-3 text-[10px] font-medium opacity-55">

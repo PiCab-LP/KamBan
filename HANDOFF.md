@@ -179,8 +179,9 @@ Qué se hizo (detalle en [README](README.md#autenticación-y-roles)):
 
 1. Aplicar la migración 5 en el SQL Editor (ver [supabase/README.md](supabase/README.md)).
 2. Crear 3 cuentas de prueba en el dashboard (Authentication → Users) y, en `public.profiles`,
-   poner una en `qa`, otra en `dev`, otra en `viewer`. **Sin al menos un `qa` no se puede operar**
-   (todas nacen `viewer`).
+   poner una en `qa`, otra en `dev`, otra en `viewer` (y cargar su `full_name`, que la UI usa para
+   mostrar a cada persona; si queda vacío, se ve el correo). **Sin al menos un `qa` no se puede
+   operar** (todas nacen `viewer`).
 3. Probar los tres flujos (ver la sección de verificación del plan): QA hace todo y asigna; el Dev
    solo ve sus bugs y solo mueve `dev_status`; el Viewer solo lee.
 

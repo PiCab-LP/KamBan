@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, Fragment } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
@@ -184,13 +184,8 @@ function SortableCard({ bug, onEdit, highlighted, readOnly, devName }) {
 export default function BugBoard() {
   const { bugs, loading, moveBug, updateBug } = useBugs();
   const { role } = useAuth();
-  const { profiles } = useProfiles();
+  const { profilesById } = useProfiles();
   const readOnly = role === 'viewer';
-  const devNameById = useMemo(() => {
-    const map = {};
-    profiles.forEach((p) => { map[p.id] = p.email; });
-    return map;
-  }, [profiles]);
   const [items, setItems] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [editingBug, setEditingBug] = useState(null);
@@ -347,7 +342,7 @@ export default function BugBoard() {
                         onEdit={handleEdit}
                         highlighted={bug.id === highlightedId}
                         readOnly={readOnly}
-                        devName={bug.assigned_dev_id ? devNameById[bug.assigned_dev_id] : null}
+                        devName={bug.assigned_dev_id ? profilesById[bug.assigned_dev_id] : null}
                       />
                     ))}
                   </SortableContext>

@@ -204,7 +204,8 @@ SQLSTATE `QA002`); el Viewer solo lee; QA escribe. El gating de la UI (ocultar b
 comodidad encima de eso.
 
 > **Bootstrap:** tras aplicar la migración, **todas las cuentas son `viewer`**. Hay que entrar al
-> dashboard y poner al menos un `qa` en `profiles` para poder operar.
+> dashboard y poner al menos un `qa` en `profiles` para poder operar. Ahí mismo conviene cargar el
+> `full_name` de cada persona; si queda vacío, la UI muestra su correo.
 
 La anon key sigue en el bundle y es pública, pero ya **no** da acceso: `anon` fue revocado y toda
 política exige un usuario autenticado con el rol adecuado.

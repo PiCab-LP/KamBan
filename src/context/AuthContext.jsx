@@ -11,6 +11,7 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
     const [session, setSession] = useState(null);
     const [role, setRole] = useState(null);
+    const [fullName, setFullName] = useState(null);
     const [loading, setLoading] = useState(true);
     // Último usuario cuyo rol ya resolvimos. Sirve para NO volver a bloquear la UI
     // (spinner) en cada refresh de token del mismo usuario.
@@ -19,11 +20,12 @@ export function AuthProvider({ children }) {
     const loadRole = useCallback(async (userId) => {
         if (!userId) {
             setRole(null);
+            setFullName(null);
             return;
         }
         const { data, error } = await supabase
             .from('profiles')
-            .select('role')
+            .select('role, full_name')
             .eq('id', userId)
             .maybeSingle();
         if (error) {
@@ -31,10 +33,12 @@ export function AuthProvider({ children }) {
             // en vez de dejar el rol en null: null haría que la UI no sepa qué mostrar.
             console.error('Error loading role:', error.message);
             setRole('viewer');
+            setFullName(null);
             return;
         }
         // Si el profile aún no existe (primer login antes del trigger), viewer por defecto.
         setRole(data?.role ?? 'viewer');
+        setFullName(data?.full_name?.trim() || null);
     }, []);
 
     useEffect(() => {
@@ -57,6 +61,7 @@ export function AuthProvider({ children }) {
             if (!userId) {
                 resolvedUserRef.current = null;
                 setRole(null);
+                setFullName(null);
                 setLoading(false);
                 return;
             }
@@ -116,6 +121,7 @@ export function AuthProvider({ children }) {
             resolvedUserRef.current = null;
             setSession(null);
             setRole(null);
+            setFullName(null);
         }
         return { success: true };
     }, []);
@@ -124,6 +130,7 @@ export function AuthProvider({ children }) {
         session,
         user: session?.user ?? null,
         role,
+        fullName,
         loading,
         signIn,
         signOut,

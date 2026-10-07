@@ -28,6 +28,7 @@ pegando cada archivo completo y en este orden:
 | 5 | `migrations/20261006130000_auth_roles.sql` | **Auth real:** `profiles`, roles, asignación de bugs y RLS estricto. Reemplaza lo permisivo del paso 3. |
 | 6 | `migrations/20261007120000_creators_and_assignment.sql` | `created_by` en epics/features/bugs y `assigned_qa_id` en features. Renombra `bugs.creator_id` → `created_by`. |
 | 7 | `migrations/20261007130000_notes_created_by.sql` | `created_by` en notes (autor de la nota). |
+| 8 | `migrations/20261007140000_profiles_full_name.sql` | `full_name` en profiles (nombre a mostrar). |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.
@@ -88,8 +89,9 @@ reescribir la lista entera. Ver `src/lib/position.js`.
 estricto por rol** y agrega el flujo de asignación de bugs. A partir de ahí la app debe
 autenticarse (Supabase Auth, email + contraseña); el rol `anon` pierde todo acceso.
 
-- **`profiles`** (`id` → `auth.users`, `email`, `role` ∈ `qa`/`dev`/`viewer`). Se crea sola
-  (rol `viewer`) con un trigger sobre `auth.users`. El rol real se fija a mano en el dashboard.
+- **`profiles`** (`id` → `auth.users`, `email`, `full_name`, `role` ∈ `qa`/`dev`/`viewer`). Se crea
+  sola (rol `viewer`) con un trigger sobre `auth.users`. El rol y el `full_name` se fijan a mano en el
+  dashboard; la UI muestra a las personas por su `full_name` (o el correo si no tiene).
 - **`user_role()`** (`security definer`): lee el rol del usuario actual sin recursar RLS; lo usan
   todas las políticas.
 - **`bugs`** gana `created_by` (`default auth.uid()`; antes `creator_id`), `assigned_qa_id`, `assigned_dev_id` y

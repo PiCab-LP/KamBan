@@ -16,11 +16,12 @@ const navItems = [
 export default function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, role, signOut } = useAuth();
+  const { user, role, fullName, signOut } = useAuth();
 
   const items = navItems.filter((item) => role && item.roles.includes(role));
   const roleLabel = ROLES[role]?.label ?? '—';
   const email = user?.email ?? '';
+  const displayName = fullName || email;
 
   const handleSignOut = async () => {
     await signOut();
@@ -76,16 +77,17 @@ export default function Layout() {
 
         {/* Footer: usuario actual + theme toggle + logout */}
         <div className="flex flex-col gap-3 p-4">
-          {email && (
+          {displayName && (
             <div className="flex items-center gap-2.5 px-1">
               <div
                 className="flex items-center justify-center w-8 h-8 rounded-lg text-white text-[10px] font-black shadow-sm shrink-0"
-                style={{ backgroundColor: getAvatarColor(email) }}
+                style={{ backgroundColor: getAvatarColor(displayName) }}
+                title={email}
               >
-                {getInitials(email)}
+                {getInitials(displayName)}
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-sidebar-foreground truncate">{email}</span>
+                <span className="text-xs font-bold text-sidebar-foreground truncate" title={email}>{displayName}</span>
                 <span className="text-[10px] font-black uppercase tracking-wider text-sidebar-foreground/50">
                   {roleLabel}
                 </span>

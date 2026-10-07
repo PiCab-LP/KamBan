@@ -13,7 +13,7 @@ export function AssignPicker({ label, help, type, users, value, onChange, disabl
         type,
         label: type === 'qa' ? 'QA' : 'Dev',
         icon: ROLE_ICON[type],
-        items: users.map((u) => ({ id: u.id, name: u.email })),
+        items: users.map((u) => ({ id: u.id, name: u.name })),
     }];
 
     return (
@@ -34,24 +34,24 @@ export function AssignPicker({ label, help, type, users, value, onChange, disabl
     );
 }
 
-/** Línea de solo lectura "Creado por X". `profilesById` mapea id → email. */
+/** Línea de solo lectura "Creado por X". `profilesById` mapea id → nombre a mostrar. */
 export function CreatedByLine({ createdBy, profilesById }) {
-    const email = createdBy ? profilesById[createdBy] : null;
+    const name = createdBy ? profilesById[createdBy] : null;
     return (
         <div className="space-y-1.5">
             <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
                 Creado por
             </p>
             <div className="flex items-center gap-2">
-                {email ? (
+                {name ? (
                     <>
                         <div
                             className="flex items-center justify-center w-6 h-6 rounded-lg text-white text-[9px] font-black shrink-0"
-                            style={{ backgroundColor: getAvatarColor(email) }}
+                            style={{ backgroundColor: getAvatarColor(name) }}
                         >
-                            {getInitials(email)}
+                            {getInitials(name)}
                         </div>
-                        <span className="text-xs font-medium text-foreground truncate">{email}</span>
+                        <span className="text-xs font-medium text-foreground truncate">{name}</span>
                     </>
                 ) : (
                     <>
@@ -66,16 +66,16 @@ export function CreatedByLine({ createdBy, profilesById }) {
 
 /**
  * Indicador del asignado para las filas del Backlog: pill muted con el ícono del
- * rol y el correo. `roleLabel` es el prefijo ("QA" / "Dev").
+ * rol y el nombre. `roleLabel` es el prefijo ("QA" / "Dev").
  */
 export function AssigneeChip({ id, profilesById, type, roleLabel }) {
-    const email = id ? profilesById[id] : null;
-    if (!email) return null;
+    const name = id ? profilesById[id] : null;
+    if (!name) return null;
     const Icon = ROLE_ICON[type] ?? User;
     return (
         <div
             className="flex w-fit max-w-full items-center gap-1.5 rounded-full bg-muted/60 border border-border/40 px-2 py-1"
-            title={roleLabel ? `${roleLabel} asignado: ${email}` : email}
+            title={roleLabel ? `${roleLabel} asignado: ${name}` : name}
         >
             <Icon size={11} strokeWidth={2.5} className="shrink-0 text-muted-foreground/70" />
             {roleLabel && (
@@ -83,7 +83,7 @@ export function AssigneeChip({ id, profilesById, type, roleLabel }) {
                     {roleLabel}
                 </span>
             )}
-            <span className="text-[10px] font-semibold text-muted-foreground/80 truncate leading-none">{email}</span>
+            <span className="text-[10px] font-semibold text-muted-foreground/80 truncate leading-none">{name}</span>
         </div>
     );
 }

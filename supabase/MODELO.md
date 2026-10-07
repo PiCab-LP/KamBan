@@ -166,9 +166,13 @@ Un registro por usuario de Supabase Auth. Guarda el rol que usa todo el RLS.
 |---|---|---|---|
 | `id` | uuid | sí | Clave primaria; → `auth.users`, CASCADE |
 | `email` | text | — | Copiado al crear la cuenta |
+| `full_name` | text | opcional | Nombre a mostrar. Se carga a mano en el dashboard; si es null, la UI usa el correo |
 | `role` | text | default `viewer` | **Enumerado** |
 
 **`role`:** `qa` · `dev` · `viewer`
+
+> La UI muestra a cada persona (asignados, creador, autor de notas, barra lateral) por su
+> `full_name`, y cae al `email` si no tiene nombre. Regla única: `full_name?.trim() || email`.
 
 | Rol | Puede |
 |---|---|
