@@ -31,9 +31,9 @@ export function NoteCard({ note, profilesById = {}, onEdit, onDelete, onTogglePi
             className="group relative flex flex-col rounded-2xl border border-border/50 p-5 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
             style={{ backgroundColor: note.color || 'var(--card)', color: 'var(--card-foreground)' }}
         >
-            {/* 1 · Vínculo (secundario): chip legible con tipo + nombre */}
-            <div className="mb-3">
-                <span className="inline-flex items-center gap-1.5 max-w-full rounded-full bg-black/5 dark:bg-white/10 pl-2 pr-2.5 py-1">
+            {/* 1 · Header: vínculo a la izquierda, autor en la esquina derecha */}
+            <div className="flex items-center justify-between gap-2 mb-3">
+                <span className="inline-flex items-center gap-1.5 min-w-0 rounded-full bg-black/5 dark:bg-white/10 pl-2 pr-2.5 py-1">
                     <LinkIcon size={13} className="shrink-0 opacity-70" strokeWidth={2.5} />
                     <span className="text-[9px] font-black uppercase tracking-wider opacity-50 shrink-0">
                         {link ? link.label : 'Global'}
@@ -44,6 +44,18 @@ export function NoteCard({ note, profilesById = {}, onEdit, onDelete, onTogglePi
                         </span>
                     )}
                 </span>
+
+                {authorName && (
+                    <div className="flex items-center gap-1.5 min-w-0 shrink-0 max-w-[55%]" title={`Creado por ${authorName}`}>
+                        <span className="text-[11px] font-semibold opacity-70 truncate">{authorName}</span>
+                        <div
+                            className="flex items-center justify-center w-6 h-6 rounded-lg text-white text-[9px] font-black shrink-0"
+                            style={{ backgroundColor: getAvatarColor(authorName) }}
+                        >
+                            {getInitials(authorName)}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* 2 · Contenido (primario) */}
@@ -51,19 +63,41 @@ export function NoteCard({ note, profilesById = {}, onEdit, onDelete, onTogglePi
                 {note.content}
             </div>
 
-            {/* 3 · Metadatos (terciario): autor + fechas */}
-            <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/10 space-y-2">
-                {authorName && (
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div
-                            className="flex items-center justify-center w-6 h-6 rounded-lg text-white text-[9px] font-black shrink-0"
-                            style={{ backgroundColor: getAvatarColor(authorName) }}
+            {/* 3 · Pie: acciones, luego autor y fechas agrupados, separados del contenido */}
+            <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/10 space-y-3">
+                {/* Acciones: cada ícono en su propio container para distinguirse */}
+                <div className="flex items-center justify-between">
+                    <button
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onTogglePin(note.id, !!note.is_pinned);
+                        }}
+                        className={`p-2 rounded-lg border transition-all duration-200 ${note.is_pinned ? 'text-primary bg-primary/15 border-primary/30 shadow-sm' : 'text-foreground/50 bg-black/[0.04] dark:bg-white/[0.06] border-black/5 dark:border-white/10 hover:text-foreground hover:bg-black/[0.07] dark:hover:bg-white/10'}`}
+                        title={note.is_pinned ? 'Desfijar' : 'Fijar al inicio'}
+                    >
+                        <Pin size={16} className={note.is_pinned ? 'fill-current' : ''} />
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                        <button
+                            onClick={() => onEdit(note)}
+                            className="p-2 rounded-lg border text-foreground/50 bg-black/[0.04] dark:bg-white/[0.06] border-black/5 dark:border-white/10 hover:text-foreground hover:bg-black/[0.07] dark:hover:bg-white/10 transition-colors"
+                            title="Editar"
                         >
-                            {getInitials(authorName)}
-                        </div>
-                        <span className="text-[11px] font-semibold opacity-70 truncate">{authorName}</span>
+                            <Edit2 size={16} />
+                        </button>
+                        <button
+                            onClick={() => onDelete(note.id)}
+                            className="p-2 rounded-lg border text-foreground/50 bg-black/[0.04] dark:bg-white/[0.06] border-black/5 dark:border-white/10 hover:text-destructive hover:bg-destructive/15 hover:border-destructive/30 transition-colors"
+                            title="Eliminar"
+                        >
+                            <Trash2 size={16} />
+                        </button>
                     </div>
-                )}
+                </div>
+
+                {/* Fechas: creado a la izquierda, editado a la derecha */}
                 <div className="flex items-center justify-between gap-3 text-[10px] font-medium opacity-55">
                     <span className="flex items-center gap-1 min-w-0" title="Fecha de creación">
                         <Clock size={11} className="shrink-0" />
@@ -75,38 +109,6 @@ export function NoteCard({ note, profilesById = {}, onEdit, onDelete, onTogglePi
                             <span className="truncate">Editado {editedLabel}</span>
                         </span>
                     )}
-                </div>
-            </div>
-
-            {/* 4 · Acciones: cada ícono en su propio container para distinguirse */}
-            <div className="flex items-center justify-between mt-3">
-                <button
-                    onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        onTogglePin(note.id, !!note.is_pinned);
-                    }}
-                    className={`p-2 rounded-lg border transition-all duration-200 ${note.is_pinned ? 'text-primary bg-primary/15 border-primary/30 shadow-sm' : 'text-foreground/50 bg-black/[0.04] dark:bg-white/[0.06] border-black/5 dark:border-white/10 hover:text-foreground hover:bg-black/[0.07] dark:hover:bg-white/10'}`}
-                    title={note.is_pinned ? 'Desfijar' : 'Fijar al inicio'}
-                >
-                    <Pin size={16} className={note.is_pinned ? 'fill-current' : ''} />
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                    <button
-                        onClick={() => onEdit(note)}
-                        className="p-2 rounded-lg border text-foreground/50 bg-black/[0.04] dark:bg-white/[0.06] border-black/5 dark:border-white/10 hover:text-foreground hover:bg-black/[0.07] dark:hover:bg-white/10 transition-colors"
-                        title="Editar"
-                    >
-                        <Edit2 size={16} />
-                    </button>
-                    <button
-                        onClick={() => onDelete(note.id)}
-                        className="p-2 rounded-lg border text-foreground/50 bg-black/[0.04] dark:bg-white/[0.06] border-black/5 dark:border-white/10 hover:text-destructive hover:bg-destructive/15 hover:border-destructive/30 transition-colors"
-                        title="Eliminar"
-                    >
-                        <Trash2 size={16} />
-                    </button>
                 </div>
             </div>
         </div>
