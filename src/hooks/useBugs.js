@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
-import { shouldFlagReopen } from '../lib/domain';
 import { positionAtEnd, positionBetween } from '../lib/position';
 
 const BUG_FIELDS = `
     id, feature_id, title, description, status, severity, priority,
-    is_reopened, position, created_at,
+    position, created_at,
     created_by, assigned_qa_id, assigned_dev_id, dev_status
 `;
 
@@ -70,26 +69,17 @@ export function useBugs({ featureId = null } = {}) {
     const updateBug = async (id, bugData) => {
         const bug = bugs.find((b) => b.id === id);
         const payload = { ...bugData };
-        let reopening = false;
 
-        // Cambiar el estado desde el formulario debe comportarse como arrastrar o usar
-        // el dropdown: marcar "Reabierto" y caer al final de la columna destino.
-        if (bug && payload.status && payload.status !== bug.status) {
-            reopening = shouldFlagReopen(bug.status, payload.status);
-            if (reopening) {
-                payload.is_reopened = true;
-                // Reabrir reinicia el ciclo del Dev: su avance vuelve a cero.
-                payload.dev_status = 'pendiente';
-            }
-            if (isBoardMode) {
-                payload.position = positionAtEnd(bugs.filter((b) => b.status === payload.status));
-            }
+        // Cambiar el estado desde el formulario, igual que arrastrar: la tarjeta cae
+        // al final de la columna destino.
+        if (bug && payload.status && payload.status !== bug.status && isBoardMode) {
+            payload.position = positionAtEnd(bugs.filter((b) => b.status === payload.status));
         }
 
         try {
             const { error } = await supabase.from('bugs').update(payload).eq('id', id);
             if (error) throw error;
-            showToast(reopening ? 'Bug reabierto' : 'Bug actualizado', reopening ? 'warning' : 'success');
+            showToast('Bug actualizado', 'success');
             await fetchBugs();
             return { success: true };
         } catch (err) {
@@ -99,27 +89,22 @@ export function useBugs({ featureId = null } = {}) {
     };
 
     /**
-     * Drag en el tablero (el formulario de clasificación usa `updateBug`; ambos pasan por
-     * `shouldFlagReopen` para no discrepar): un UPDATE de una sola fila gracias a las posiciones
+     * Drag en el tablero: un UPDATE de una sola fila gracias a las posiciones
      * fraccionarias. `prevItem`/`nextItem` son los vecinos en el destino.
      */
     const moveBug = async (id, status, prevItem, nextItem) => {
         const bug = bugs.find((b) => b.id === id);
         if (!bug) return { success: false, error: 'Bug no encontrado' };
 
-        const reopening = shouldFlagReopen(bug.status, status);
         const payload = {
             status,
             position: positionBetween(prevItem, nextItem),
-            // Reabrir reinicia el avance del Dev (ver updateBug).
-            ...(reopening && { is_reopened: true, dev_status: 'pendiente' }),
         };
 
         try {
             const { error } = await supabase.from('bugs').update(payload).eq('id', id);
             if (error) throw error;
             setBugs((prev) => prev.map((b) => (b.id === id ? { ...b, ...payload } : b)));
-            if (reopening) showToast('Bug reabierto', 'warning');
             return { success: true };
         } catch (err) {
             console.error('Error moving bug:', err.message);

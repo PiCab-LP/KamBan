@@ -71,7 +71,7 @@ caso, sigue el orden que indica [supabase/README.md](supabase/README.md).
 |---|---|---|
 | `/login` | Login real con email + contraseña (Supabase Auth) | público |
 | `/backlog` | Backlog de QA: una sola tabla (Elemento · Estado · Fecha de creación · Acciones) donde los Features y Bugs son filas anidadas bajo su Epic | qa (edita), viewer (solo lee) |
-| `/bugs` | Tablero de Bugs: 4 columnas, drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) y se asigna | qa (edita), viewer (solo lee) |
+| `/bugs` | Tablero de Bugs: 5 columnas (Nuevo · En progreso · Bloqueado · Para despliegue · Completado), drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) y se asigna | qa (edita), viewer (solo lee) |
 | `/mis-bugs` | Mis Bugs: los bugs asignados al Dev; marca su avance (Corregido/Revisado) y comenta | dev |
 | `/casos-de-prueba` | Casos de Prueba — en construcción | qa |
 | `/notes` | Notas del equipo | qa |
@@ -195,8 +195,8 @@ tanto al registrarlo en el Backlog como desde la hoja de clasificación del Tabl
 al crearlo o editarlo. Todo es opcional y editable, y solo lo hace QA.
 
 **`dev_status` es independiente del estado del tablero.** El Dev marca su avance; el `status`
-(Nuevo/En progreso/Resuelto/Cerrado) lo sigue manejando QA. No se deriva uno del otro. Al
-**reabrir** un bug, `dev_status` vuelve a `pendiente`.
+(Nuevo · En progreso · Bloqueado · Para despliegue · Completado) lo sigue manejando QA. No se deriva
+uno del otro. "Bug abierto" (métrica y regla de completado) = Nuevo / En progreso / Bloqueado.
 
 **El RLS es la barrera real** (`20261006130000_auth_roles.sql`): el Dev a nivel de base solo
 puede leer sus bugs y solo cambiar `dev_status` (lo respalda el trigger `guard_dev_bug_update`,

@@ -16,10 +16,11 @@ export const ENTITY_STATUS = {
 };
 
 export const BUG_STATUS = {
-    nuevo:       { label: 'Nuevo',       color: 'oklch(0.60 0.22 300)' },
-    en_progreso: { label: 'En progreso', color: 'oklch(0.58 0.20 277)' },
-    resuelto:    { label: 'Resuelto',    color: 'oklch(0.60 0.16 150)' },
-    cerrado:     { label: 'Cerrado',     color: 'oklch(0.55 0.02 260)' },
+    nuevo:           { label: 'Nuevo',          color: 'oklch(0.60 0.22 300)' },
+    en_progreso:     { label: 'En progreso',    color: 'oklch(0.58 0.20 277)' },
+    bloqueado:       { label: 'Bloqueado',      color: 'oklch(0.58 0.22 25)' },
+    para_despliegue: { label: 'Para despliegue', color: 'oklch(0.68 0.15 230)' },
+    completado:      { label: 'Completado',     color: 'oklch(0.60 0.16 150)' },
 };
 
 export const BUG_SEVERITY = {
@@ -37,30 +38,19 @@ export const BUG_PRIORITY = {
 
 /** Columnas del Tablero de Bugs, en orden de izquierda a derecha. */
 export const BUG_COLUMNS = [
-    { id: 'nuevo',       title: 'Nuevo',       description: 'Bugs por atender' },
-    { id: 'en_progreso', title: 'En progreso', description: 'En investigación' },
-    { id: 'resuelto',    title: 'Resuelto',    description: 'Listo para verificar' },
-    { id: 'cerrado',     title: 'Cerrado',     description: 'Verificado y cerrado' },
+    { id: 'nuevo',           title: 'Nuevo',           description: 'Bugs por atender' },
+    { id: 'en_progreso',     title: 'En progreso',     description: 'En investigación' },
+    { id: 'bloqueado',       title: 'Bloqueado',       description: 'Trabados por dependencias' },
+    { id: 'para_despliegue', title: 'Para despliegue', description: 'Listos para desplegar' },
+    { id: 'completado',      title: 'Completado',      description: 'Desplegado y verificado' },
 ];
-
-const REOPEN_FROM = ['resuelto', 'cerrado'];
-const REOPEN_TO = ['nuevo', 'en_progreso'];
-
-/**
- * Un bug se marca como reabierto al volver de resuelto/cerrado al trabajo
- * activo. Lo llaman los DOS sitios que cambian estado — el dropdown de BugRow
- * y el drag del tablero — para que nunca discrepen.
- */
-export function shouldFlagReopen(prevStatus, nextStatus) {
-    return REOPEN_FROM.includes(prevStatus) && REOPEN_TO.includes(nextStatus);
-}
 
 /**
  * Bugs que todavía requieren trabajo. Usado por las métricas del backlog y por
  * la regla de completado. Duplicado en los triggers de
- * supabase/migrations/20261006120000_completion_guard.sql.
+ * supabase/migrations/20261007150000_bug_statuses.sql (guard_feature/epic_completion).
  */
-export const OPEN_BUG_STATUSES = ['nuevo', 'en_progreso'];
+export const OPEN_BUG_STATUSES = ['nuevo', 'en_progreso', 'bloqueado'];
 
 /** Estado final de Epic y Feature. Solo se alcanza sin trabajo pendiente debajo. */
 export const COMPLETED_STATUS = 'completado';

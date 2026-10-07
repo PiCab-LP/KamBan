@@ -2,7 +2,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { GripVertical, Bug as BugIcon, Code2 } from 'lucide-react';
+import { GripVertical } from 'lucide-react';
 import {
   DndContext,
   closestCorners,
@@ -27,7 +27,7 @@ import { useBugs } from '../hooks/useBugs';
 import { useProfiles } from '../hooks/useProfiles';
 import { useAuth } from '../context/AuthContext';
 import { BUG_COLUMNS, BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY, DEV_STATUS } from '../lib/domain';
-import { StatusBadge, ReopenedBadge } from '../components/ui/StatusBadge';
+import { StatusBadge } from '../components/ui/StatusBadge';
 import { LoadingSkeleton } from '../components/ui/StatCard';
 import { BugFormSheet } from '../components/backlog/BugFormSheet';
 import '../App.css';
@@ -80,72 +80,96 @@ function DroppableColumn({ id, title, description, count, children }) {
   );
 }
 
-const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false, readOnly = false, devName }) => {
+const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false, readOnly = false, qaName, devName }) => {
   const featureName = bug.features?.name;
   const epicName = bug.features?.epics?.name;
-  const severityColor = BUG_SEVERITY[bug.severity]?.color || 'var(--primary)';
+  const severity = BUG_SEVERITY[bug.severity];
+  const severityColor = severity?.color || 'var(--primary)';
   const devStage = bug.dev_status && bug.dev_status !== 'pendiente' ? DEV_STATUS[bug.dev_status] : null;
 
   return (
     <Card
       className={`
-        border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full group
+        p-0 gap-0 border-border/40 overflow-hidden bg-card transition-all duration-300 rounded-xl w-full group
         ${isOverlay ? 'ring-2 ring-primary/40 shadow-2xl opacity-95' : 'hover:border-primary/30 hover:shadow-lg hover:shadow-black/5'}
         ${highlighted ? 'ring-2 ring-primary shadow-xl shadow-primary/20 scale-[1.03]' : ''}
       `}
     >
-      <div className="flex items-stretch min-h-[48px]">
+      <div className="flex items-stretch min-h-[56px]">
+        {/* Franja de severidad: reemplaza al ícono para seguir viéndola de un vistazo. */}
+        <div
+          className="w-1 shrink-0"
+          style={{ backgroundColor: severityColor }}
+          title={`Severidad: ${severity?.label}`}
+        />
+
         {!readOnly && (
           <div
             {...dragHandleProps}
-            className="flex items-center justify-center px-1.5 text-muted-foreground/45 bg-muted/5 border-r border-border/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70 transition-colors duration-200"
+            className="flex items-center justify-center px-1 text-muted-foreground/40 bg-muted/5 border-r border-border/30 cursor-grab active:cursor-grabbing group-hover:text-muted-foreground/70 transition-colors duration-200"
           >
             <GripVertical size={12} />
           </div>
         )}
 
         <div
-          className={`flex-1 flex items-start gap-3 px-3 py-2.5 select-none min-w-0 ${readOnly ? '' : 'cursor-pointer'}`}
+          className={`flex-1 flex flex-col gap-2 px-3 py-2.5 select-none min-w-0 ${readOnly ? '' : 'cursor-pointer'}`}
           onClick={readOnly ? undefined : () => onEdit(bug)}
         >
-          <div
-            className="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg mt-0.5"
-            style={{ backgroundColor: `color-mix(in oklch, ${severityColor} 15%, transparent)` }}
-            title={`Severidad: ${BUG_SEVERITY[bug.severity]?.label}`}
-          >
-            <BugIcon size={15} strokeWidth={2.5} style={{ color: severityColor }} />
-          </div>
+          {/* Contexto: en qué Epic › Feature vive el bug */}
+          {(epicName || featureName) && (
+            <div className="text-[9px] font-bold uppercase tracking-tight text-muted-foreground/60 truncate">
+              {epicName ? `${epicName} › ${featureName}` : featureName}
+            </div>
+          )}
 
-          <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-            <h4 className="text-xs font-bold text-foreground leading-snug line-clamp-2">
-              {bug.title}
-            </h4>
-            <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Título del bug */}
+          <h4 className="text-[13px] font-bold text-foreground leading-snug line-clamp-2">
+            {bug.title}
+          </h4>
+
+          {/* Descripción, para más contexto */}
+          {bug.description && (
+            <p className="text-[11px] text-muted-foreground/70 leading-snug line-clamp-2 whitespace-pre-wrap">
+              {bug.description}
+            </p>
+          )}
+
+          {/* Campos etiquetados: severidad, prioridad, avance y responsables */}
+          <div className="flex flex-col gap-1.5 pt-2 border-t border-border/40 text-[11px]">
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-muted-foreground/60 shrink-0">Severidad:</span>
               <StatusBadge value={bug.severity} map={BUG_SEVERITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-muted-foreground/60 shrink-0">Prioridad:</span>
               <StatusBadge value={bug.priority} map={BUG_PRIORITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
-              {bug.is_reopened && <ReopenedBadge />}
-              {devStage && (
+            </div>
+            {devStage && (
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-muted-foreground/60 shrink-0">Avance Dev:</span>
                 <span
                   className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider"
                   style={{
                     backgroundColor: `color-mix(in oklch, ${devStage.color} 15%, transparent)`,
                     color: devStage.color,
                   }}
-                  title={`Avance del Dev: ${devStage.label}`}
                 >
                   {devStage.label}
                 </span>
-              )}
-            </div>
-            {featureName && (
-              <p className="text-[9px] font-bold text-muted-foreground/60 uppercase tracking-tighter truncate">
-                {epicName ? `${epicName} › ${featureName}` : featureName}
-              </p>
+              </div>
+            )}
+            {qaName && (
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-bold text-muted-foreground/60 shrink-0">QA asignado:</span>
+                <span className="font-semibold text-foreground/80 truncate">{qaName}</span>
+              </div>
             )}
             {devName && (
-              <p className="flex items-center gap-1 text-[9px] font-bold text-muted-foreground/60 truncate">
-                <Code2 size={10} className="shrink-0" /> {devName}
-              </p>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-bold text-muted-foreground/60 shrink-0">Dev asignado:</span>
+                <span className="font-semibold text-foreground/80 truncate">{devName}</span>
+              </div>
             )}
           </div>
         </div>
@@ -154,7 +178,7 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false,
   );
 };
 
-function SortableCard({ bug, onEdit, highlighted, readOnly, devName }) {
+function SortableCard({ bug, onEdit, highlighted, readOnly, qaName, devName }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: bug.id,
     disabled: readOnly,
@@ -175,6 +199,7 @@ function SortableCard({ bug, onEdit, highlighted, readOnly, devName }) {
         isOverlay={false}
         highlighted={highlighted}
         readOnly={readOnly}
+        qaName={qaName}
         devName={devName}
       />
     </div>
@@ -342,6 +367,7 @@ export default function BugBoard() {
                         onEdit={handleEdit}
                         highlighted={bug.id === highlightedId}
                         readOnly={readOnly}
+                        qaName={bug.assigned_qa_id ? profilesById[bug.assigned_qa_id] : null}
                         devName={bug.assigned_dev_id ? profilesById[bug.assigned_dev_id] : null}
                       />
                     ))}
@@ -362,7 +388,13 @@ export default function BugBoard() {
           >
             {activeBug ? (
               <div className="w-[280px]">
-                <BugCard bug={activeBug} isOverlay onEdit={handleEdit} />
+                <BugCard
+                  bug={activeBug}
+                  isOverlay
+                  onEdit={handleEdit}
+                  qaName={activeBug.assigned_qa_id ? profilesById[activeBug.assigned_qa_id] : null}
+                  devName={activeBug.assigned_dev_id ? profilesById[activeBug.assigned_dev_id] : null}
+                />
               </div>
             ) : null}
           </DragOverlay>,

@@ -27,7 +27,7 @@ las elimina, pasan a globales.
 |---|---|---|
 | [`epics`](#1-epics) | `status` | `20261002120100_create_qa_schema.sql` |
 | [`features`](#2-features) | `status` | `20261002120100` |
-| [`bugs`](#3-bugs) | `status`, `severity`, `priority`, `dev_status`, `is_reopened` | `20261002120100` + `20261006130000` |
+| [`bugs`](#3-bugs) | `status`, `severity`, `priority`, `dev_status` | `20261002120100` + `20261006130000` + `20261007150000` |
 | [`comments`](#4-comments) | — | `20261002120100` |
 | [`notes`](#5-notes) | — (`is_pinned`, `color`) | `20261002120100` |
 | [`profiles`](#6-profiles) | `role` | `20261006130000_auth_roles.sql` |
@@ -92,7 +92,7 @@ Nivel 3. Cuelga de un feature. Es la tabla con más campos de estado.
 | `severity` | text | default `media` | **Enumerado** |
 | `priority` | text | default `media` | **Enumerado** |
 | `dev_status` | text | default `pendiente` | **Enumerado** — avance del Dev, independiente de `status` |
-| `is_reopened` | boolean | default `false` | Marca de reabierto; **no** es un estado enumerado |
+| `is_reopened` | boolean | default `false` | **Latente**: la lógica de "Reabierto" se eliminó; la columna se dejó por si se retoma. Siempre `false` |
 | `position` | numeric | default `0` | Orden dentro de la columna del tablero |
 | `created_by` | uuid | default `auth.uid()` | → `profiles` (autor). Lo pone la base, no el cliente |
 | `assigned_qa_id` | uuid | opcional | → `profiles` (QA responsable de verificar/cerrar) |
@@ -104,13 +104,13 @@ Nivel 3. Cuelga de un feature. Es la tabla con más campos de estado.
 
 | Campo | Valores | Constante |
 |---|---|---|
-| `status` | `nuevo` · `en_progreso` · `resuelto` · `cerrado` | `BUG_STATUS` |
+| `status` | `nuevo` · `en_progreso` · `bloqueado` · `para_despliegue` · `completado` | `BUG_STATUS` |
 | `severity` | `critica` · `alta` · `media` · `baja` | `BUG_SEVERITY` |
 | `priority` | `alta` · `media` · `baja` | `BUG_PRIORITY` |
 | `dev_status` | `pendiente` · `corregido` · `revisado` | `DEV_STATUS` |
 
-> - `is_reopened` pasa a `true` al mover un bug de `resuelto`/`cerrado` a `nuevo`/`en_progreso`.
->   Al reabrir, `dev_status` vuelve a `pendiente`.
+> - "Bug abierto" (métrica y regla de completado) = `nuevo` / `en_progreso` / `bloqueado`.
+>   `para_despliegue` y `completado` cuentan como terminados.
 > - El **Dev asignado** solo puede cambiar `dev_status` (lo garantiza el trigger
 >   `guard_dev_bug_update`, SQLSTATE `QA002`). Todo lo demás es de QA.
 > - Las columnas del Tablero (`BUG_COLUMNS`) son los cuatro valores de `status`, en ese orden.
@@ -211,8 +211,9 @@ sin romper nada en silencio:
 
 **Dependencias escondidas del valor exacto:**
 
-- **`bugs.status`** → en `domain.js`: `BUG_COLUMNS`, `REOPEN_FROM`/`REOPEN_TO`, `OPEN_BUG_STATUSES`.
-  En SQL: el trigger de `20261006120000_completion_guard.sql` (tiene escritos `'nuevo','en_progreso'`).
+- **`bugs.status`** → en `domain.js`: `BUG_COLUMNS` y `OPEN_BUG_STATUSES`. En SQL: el `CHECK` y los
+  guards `guard_feature_completion`/`guard_epic_completion` de `20261007150000_bug_statuses.sql`
+  (tienen escrito el conjunto de "abiertos" `'nuevo','en_progreso','bloqueado'`).
 - **`ENTITY_STATUS`** (sobre todo `completado`) → `COMPLETED_STATUS` en `domain.js` y los triggers de
   `completion_guard.sql`.
 - **`bugs.dev_status`** → `DEV_STATUS_ORDER` en `domain.js` y el reset a `'pendiente'` en `useBugs.js`.

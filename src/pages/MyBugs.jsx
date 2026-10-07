@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Bug as BugIcon, MessageSquare, ClipboardCheck } from 'lucide-react';
 import { useBugs } from '../hooks/useBugs';
 import { BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY, DEV_STATUS } from '../lib/domain';
-import { StatusBadge, ReopenedBadge } from '../components/ui/StatusBadge';
+import { StatusBadge } from '../components/ui/StatusBadge';
 import { StatusPills } from '../components/backlog/StatusPills';
 import { CommentsPanel } from '../components/backlog/CommentsPanel';
 import { LoadingSkeleton } from '../components/ui/StatCard';
@@ -82,7 +82,6 @@ export default function MyBugs() {
                                         <StatusBadge value={bug.status} map={BUG_STATUS} className="!text-[10px]" />
                                         <StatusBadge value={bug.severity} map={BUG_SEVERITY} showDot={false} className="!px-2 !py-0.5 !text-[10px]" />
                                         <StatusBadge value={bug.priority} map={BUG_PRIORITY} showDot={false} className="!px-2 !py-0.5 !text-[10px]" />
-                                        {bug.is_reopened && <ReopenedBadge />}
                                     </div>
 
                                     <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 pt-4 border-t border-border/40">

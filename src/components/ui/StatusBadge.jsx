@@ -22,12 +22,3 @@ export function StatusBadge({ value, map, showDot = true, className = '' }) {
         </span>
     );
 }
-
-/** Etiqueta para los bugs que volvieron al trabajo activo desde resuelto/cerrado. */
-export function ReopenedBadge() {
-    return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-destructive/12 text-destructive shrink-0">
-            Reabierto
-        </span>
-    );
-}

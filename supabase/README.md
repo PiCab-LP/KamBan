@@ -29,6 +29,7 @@ pegando cada archivo completo y en este orden:
 | 6 | `migrations/20261007120000_creators_and_assignment.sql` | `created_by` en epics/features/bugs y `assigned_qa_id` en features. Renombra `bugs.creator_id` → `created_by`. |
 | 7 | `migrations/20261007130000_notes_created_by.sql` | `created_by` en notes (autor de la nota). |
 | 8 | `migrations/20261007140000_profiles_full_name.sql` | `full_name` en profiles (nombre a mostrar). |
+| 9 | `migrations/20261007150000_bug_statuses.sql` | Estados del tablero: nuevo · en_progreso · bloqueado · para_despliegue · completado. Remapea resuelto/cerrado. |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.
@@ -68,12 +69,12 @@ PostgREST expone ambos como string al cliente, así que no se pierde nada.
 
 **Triggers: `set_updated_at()` y dos que solo validan.** Toda esta migración existe porque
 había un trigger invisible generando datos que nadie podía auditar. No se reintroduce magia
-oculta: el flag de "Reabierto" de los bugs lo calcula el frontend
-(`shouldFlagReopen` en `src/lib/domain.js`), no la base de datos.
+oculta: no hay triggers de lógica de negocio que escriban datos.
 
-Los triggers `features_guard_completion` y `epics_guard_completion` (migración 4) **no
-escriben ni derivan nada**: rechazan con el SQLSTATE `QA001` un UPDATE que ponga "Completado"
-mientras haya bugs abiertos (`nuevo`/`en_progreso`) o, en un Epic, features sin completar.
+Los triggers `features_guard_completion` y `epics_guard_completion` (migración 4, con el conjunto
+de "abiertos" actualizado en la 9) **no escriben ni derivan nada**: rechazan con el SQLSTATE `QA001`
+un UPDATE que ponga "Completado" mientras haya bugs abiertos (`nuevo`/`en_progreso`/`bloqueado`) o,
+en un Epic, features sin completar.
 Una regla entre tablas no se puede expresar con un `CHECK`, por eso es un trigger. Solo
 actúan al *cambiar* a Completado, y los "bugs abiertos" están duplicados en
 `OPEN_BUG_STATUSES` (`src/lib/domain.js`).

@@ -39,9 +39,9 @@ verificaron de punta a punta contra la base real:
 
 - Crear, editar, borrar y cambiar estado de Epics, Features y Bugs.
 - Navegación en árbol dentro de una sola tabla: Epic → Feature → Bugs, desplegable por nivel.
-- **Marcado automático de "Reabierto"** al cambiar el estado desde la hoja de clasificación
-  del Tablero: al mover un bug de `resuelto`/`cerrado` a `nuevo`/`en_progreso` se marca
-  solo, con etiqueta roja y toast.
+- Tablero de Bugs con **cinco estados**: Nuevo · En progreso · Bloqueado · Para despliegue ·
+  Completado (migración `20261007150000`). "Bug abierto" = Nuevo / En progreso / Bloqueado.
+  La vieja lógica de "Reabierto" se eliminó.
 - Agregar feature desde la fila del Epic y agregar bug desde la fila del Feature, incluso
   con el padre colapsado (se despliega solo).
 - Comentarios en Features y en Bugs, con hilos y contadores independientes.
@@ -222,12 +222,14 @@ están duplicados entre el SQL y `src/lib/domain.js`.
 
 **Triggers: `set_updated_at` y dos de solo validación.** Toda esta migración existe porque
 había un trigger invisible generando datos que nadie podía auditar. No se reintrodujo
-magia oculta: el flag de "Reabierto" lo calcula el frontend, a la vista. Los triggers de
+magia oculta: no hay triggers de negocio que escriban datos. Los triggers de
 `completion_guard` solo *rechazan* un UPDATE incoherente (SQLSTATE `QA001`); no escriben nada.
 Se usó trigger porque una regla entre tablas no cabe en un `CHECK`.
 
-**"Reabierto" es un booleano, no un quinto estado.** Se evaluó un contador de reaperturas
-("Reabierto ×3") y el usuario lo descartó: prefirió la señal simple.
+**Estados del tablero (octubre de 2026): Nuevo · En progreso · Bloqueado · Para despliegue ·
+Completado.** Reemplazaron a `nuevo/en_progreso/resuelto/cerrado`. Con el cambio se **eliminó la
+lógica de "Reabierto"** (se evaluó y se descartó por ahora); la columna `bugs.is_reopened` quedó
+latente (siempre `false`) por si se retoma. "Bug abierto" = `nuevo`/`en_progreso`/`bloqueado`.
 
 **Posiciones fraccionarias (`position numeric`) solo en `bugs`.** Es el único sitio con
 drag. Un arrastre = **1 UPDATE de 1 fila**. El código anterior reescribía el tablero
