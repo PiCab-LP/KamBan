@@ -83,8 +83,8 @@ function DroppableColumn({ id, title, description, count, children }) {
 const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false, readOnly = false, qaName, devName }) => {
   const featureName = bug.features?.name;
   const epicName = bug.features?.epics?.name;
-  const severity = BUG_SEVERITY[bug.severity];
-  const severityColor = severity?.color || 'var(--primary)';
+  const status = BUG_STATUS[bug.status];
+  const statusColor = status?.color || 'var(--primary)';
   const devStage = bug.dev_status && bug.dev_status !== 'pendiente' ? DEV_STATUS[bug.dev_status] : null;
 
   return (
@@ -96,11 +96,11 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false,
       `}
     >
       <div className="flex items-stretch min-h-[56px]">
-        {/* Franja de severidad: reemplaza al ícono para seguir viéndola de un vistazo. */}
+        {/* Franja con el color del estado (la columna) del bug. */}
         <div
           className="w-1 shrink-0"
-          style={{ backgroundColor: severityColor }}
-          title={`Severidad: ${severity?.label}`}
+          style={{ backgroundColor: statusColor }}
+          title={`Estado: ${status?.label}`}
         />
 
         {!readOnly && (
