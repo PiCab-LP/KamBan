@@ -20,7 +20,7 @@ export function useFeatures(epicId) {
             setLoading(true);
             const { data, error } = await supabase
                 .from('features')
-                .select('id, epic_id, name, description, status, created_at, bugs(count)')
+                .select('id, epic_id, name, description, status, created_at, created_by, assigned_qa_id, bugs(count)')
                 .eq('epic_id', epicId)
                 .order('created_at', { ascending: true });
 

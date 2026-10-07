@@ -11,8 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { ENTITY_STATUS } from '@/lib/domain';
 import { toDateInputValue, dateInputToTimestamp } from '@/lib/format';
+import { useProfiles } from '@/hooks/useProfiles';
 import { StatusPills } from './StatusPills';
 import { CreatedAtField } from './CreatedAtField';
+import { AssignPicker, CreatedByLine } from './assignments';
 
 const MAX_DESCRIPTION = 2000;
 
@@ -22,8 +24,11 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
     const [description, setDescription] = useState('');
     const [status, setStatus] = useState('pendiente');
     const [createdAt, setCreatedAt] = useState('');
+    const [assignedQaId, setAssignedQaId] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+
+    const { qaUsers, profilesById } = useProfiles();
 
     useEffect(() => {
         if (!open) return;
@@ -31,6 +36,7 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
         setDescription(feature?.description || '');
         setStatus(feature?.status || 'pendiente');
         setCreatedAt(toDateInputValue(feature?.created_at));
+        setAssignedQaId(feature?.assigned_qa_id || null);
         setError('');
     }, [open, feature]);
 
@@ -47,6 +53,7 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
             description: description.trim() || null,
             status,
             created_at: dateInputToTimestamp(createdAt, feature?.created_at),
+            assigned_qa_id: assignedQaId,
         });
         setSaving(false);
 
@@ -113,6 +120,17 @@ export function FeatureFormModal({ open, onClose, feature, onSave }) {
                         onChange={setCreatedAt}
                         disabled={saving}
                     />
+
+                    <AssignPicker
+                        label="QA asignado"
+                        type="qa"
+                        users={qaUsers}
+                        value={assignedQaId}
+                        onChange={setAssignedQaId}
+                        disabled={saving}
+                    />
+
+                    {isEditing && <CreatedByLine createdBy={feature?.created_by} profilesById={profilesById} />}
 
                     <div className="flex justify-end gap-3 mt-2">
                         <Button

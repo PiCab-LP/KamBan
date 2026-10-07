@@ -26,7 +26,7 @@ pegando cada archivo completo y en este orden:
 | 3 | `migrations/20261002120200_rls_policies.sql` | Activa RLS (permisiva, sin auth). |
 | 4 | `migrations/20261006120000_completion_guard.sql` | Triggers: no completar con trabajo pendiente. |
 | 5 | `migrations/20261006130000_auth_roles.sql` | **Auth real:** `profiles`, roles, asignación de bugs y RLS estricto. Reemplaza lo permisivo del paso 3. |
-| 4 | `migrations/20261006120000_completion_guard.sql` | Triggers que impiden completar un Epic/Feature con trabajo pendiente. |
+| 6 | `migrations/20261007120000_creators_and_assignment.sql` | `created_by` en epics/features/bugs y `assigned_qa_id` en features. Renombra `bugs.creator_id` → `created_by`. |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.
@@ -91,7 +91,7 @@ autenticarse (Supabase Auth, email + contraseña); el rol `anon` pierde todo acc
   (rol `viewer`) con un trigger sobre `auth.users`. El rol real se fija a mano en el dashboard.
 - **`user_role()`** (`security definer`): lee el rol del usuario actual sin recursar RLS; lo usan
   todas las políticas.
-- **`bugs`** gana `creator_id` (`default auth.uid()`), `assigned_qa_id`, `assigned_dev_id` y
+- **`bugs`** gana `created_by` (`default auth.uid()`; antes `creator_id`), `assigned_qa_id`, `assigned_dev_id` y
   `dev_status` (`pendiente`/`corregido`/`revisado`).
 - **Reglas:** qa escribe todo; viewer solo lee; **dev solo lee sus bugs asignados y solo cambia
   `dev_status`** — lo garantizan la política de `bugs` y el trigger `guard_dev_bug_update`

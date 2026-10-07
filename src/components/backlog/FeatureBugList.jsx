@@ -9,6 +9,7 @@ import { formatLocalDate } from '@/lib/format';
 import { BugFormSheet } from './BugFormSheet';
 import { CommentsPanel } from './CommentsPanel';
 import { RowActions } from './TreeRow';
+import { AssigneeChip } from './assignments';
 import {
     BUG_INDENT, BUG_ACCENT, FEATURE_ICON_CENTER, TICK_WIDTH, NESTED_STRIP,
 } from './treeLayout';
@@ -50,7 +51,7 @@ function MessageRow({ children }) {
  * del Epic. Aquí no se muestran estado, severidad ni prioridad: se ven y se cambian
  * desde el Tablero de Bugs, al que lleva el enlace "Ver en el tablero".
  */
-export function FeatureBugList({ featureId, canManage = true, onContentChange, openBugForm, onBugFormOpened }) {
+export function FeatureBugList({ featureId, canManage = true, profilesById = {}, onContentChange, openBugForm, onBugFormOpened }) {
     const {
         bugs, loading, createBug, updateBug, deleteBug,
     } = useBugs({ featureId });
@@ -110,29 +111,34 @@ export function FeatureBugList({ featureId, canManage = true, onContentChange, o
                         <TableCell className={`relative p-0 ${NESTED_STRIP}`}>
                             <Connector end={index === bugs.length - 1} />
                             <div
-                                className="flex items-center gap-2 min-w-0 py-2.5"
+                                className="flex items-start gap-2 min-w-0 py-2.5"
                                 style={{ paddingLeft: BUG_INDENT }}
                             >
                                 <BugIcon
                                     size={15}
                                     strokeWidth={2}
-                                    className="shrink-0"
+                                    className="shrink-0 mt-0.5"
                                     style={{ color: BUG_ACCENT }}
                                 />
-                                {canManage ? (
-                                    <button
-                                        onClick={() => { setFormBug(bug); setFormOpen(true); }}
-                                        className="min-w-0 text-left"
-                                    >
-                                        <span className="block text-[12px] font-semibold text-foreground truncate">
+                                <div className="min-w-0 space-y-1">
+                                    {canManage ? (
+                                        <button
+                                            onClick={() => { setFormBug(bug); setFormOpen(true); }}
+                                            className="min-w-0 text-left"
+                                        >
+                                            <span className="block text-[12px] font-semibold text-foreground truncate">
+                                                {bug.title}
+                                            </span>
+                                        </button>
+                                    ) : (
+                                        <span className="block min-w-0 text-[12px] font-semibold text-foreground truncate">
                                             {bug.title}
                                         </span>
-                                    </button>
-                                ) : (
-                                    <span className="block min-w-0 text-[12px] font-semibold text-foreground truncate">
-                                        {bug.title}
-                                    </span>
-                                )}
+                                    )}
+                                    {bug.assigned_dev_id && (
+                                        <AssigneeChip id={bug.assigned_dev_id} profilesById={profilesById} type="dev" roleLabel="Dev" />
+                                    )}
+                                </div>
                             </div>
                         </TableCell>
 

@@ -9,7 +9,9 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ENTITY_STATUS } from '@/lib/domain';
+import { useProfiles } from '@/hooks/useProfiles';
 import { StatusPills } from './StatusPills';
+import { CreatedByLine } from './assignments';
 
 export function EpicFormModal({ open, onClose, epic, onSave }) {
     const isEditing = Boolean(epic);
@@ -17,6 +19,7 @@ export function EpicFormModal({ open, onClose, epic, onSave }) {
     const [status, setStatus] = useState('pendiente');
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const { profilesById } = useProfiles();
 
     useEffect(() => {
         if (!open) return;
@@ -84,6 +87,8 @@ export function EpicFormModal({ open, onClose, epic, onSave }) {
                         onChange={setStatus}
                         disabled={saving}
                     />
+
+                    {isEditing && <CreatedByLine createdBy={epic?.created_by} profilesById={profilesById} />}
 
                     <div className="flex justify-end gap-3 mt-2">
                         <Button

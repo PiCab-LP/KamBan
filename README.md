@@ -187,10 +187,12 @@ mano en el dashboard; toda cuenta nace como `viewer`.
 | `dev` | Solo ve **sus** bugs asignados (`/mis-bugs`), marca su avance (`dev_status`: Pendiente → Corregido → Revisado) y comenta en ellos. Nada más. |
 | `viewer` | Solo lectura de Epics, Features y Bugs. |
 
-**Asignación de bugs.** Al registrarse, el bug toma como **creador** al usuario del JWT
-(`creator_id default auth.uid()` en la base, no se confía en el cliente). Desde la hoja de
-clasificación del Tablero, cualquier QA puede asignar un **QA responsable** (verifica y cierra)
-y un **Dev** (lo corrige). La asignación es opcional y editable.
+**Creador y asignación.** Epics, Features y Bugs guardan quién los creó en **`created_by`**
+(`default auth.uid()` en la base, no se confía en el cliente). Aparte del creador, se puede
+**asignar**: un Feature a un **QA** (informativo, no cambia qué ve el Dev); un Bug a un **QA
+responsable** (verifica y cierra) y a un **Dev** (lo corrige). La asignación del bug se puede hacer
+tanto al registrarlo en el Backlog como desde la hoja de clasificación del Tablero; la del feature,
+al crearlo o editarlo. Todo es opcional y editable, y solo lo hace QA.
 
 **`dev_status` es independiente del estado del tablero.** El Dev marca su avance; el `status`
 (Nuevo/En progreso/Resuelto/Cerrado) lo sigue manejando QA. No se deriva uno del otro. Al

@@ -17,7 +17,7 @@ export function useEpics() {
             setLoading(true);
             const { data, error } = await supabase
                 .from('epics')
-                .select('id, name, status, created_at, updated_at')
+                .select('id, name, status, created_at, updated_at, created_by')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;

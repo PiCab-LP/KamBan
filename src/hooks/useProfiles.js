@@ -29,8 +29,12 @@ export function useProfiles({ enabled = true } = {}) {
         if (enabled) fetchProfiles();
     }, [enabled, fetchProfiles]);
 
+    const profilesById = {};
+    profiles.forEach((p) => { profilesById[p.id] = p.email; });
+
     return {
         profiles,
+        profilesById,
         qaUsers: profiles.filter((p) => p.role === 'qa'),
         devUsers: profiles.filter((p) => p.role === 'dev'),
         loading,

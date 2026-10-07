@@ -7,7 +7,7 @@ import { positionAtEnd, positionBetween } from '../lib/position';
 const BUG_FIELDS = `
     id, feature_id, title, description, status, severity, priority,
     is_reopened, position, created_at,
-    creator_id, assigned_qa_id, assigned_dev_id, dev_status
+    created_by, assigned_qa_id, assigned_dev_id, dev_status
 `;
 
 /**

@@ -18,19 +18,20 @@ export function TreeLabel({
     title,
     meta,
     subtitle,
+    footer,
     toggleTitle,
     titleClassName = 'text-[13px] font-bold text-foreground',
 }) {
     return (
         <div
-            className="flex items-center gap-2 min-w-0 py-2.5"
+            className="flex items-start gap-2 min-w-0 py-2.5"
             style={{ paddingLeft: indent }}
         >
             {expandable ? (
                 <button
                     onClick={onToggle}
                     title={toggleTitle}
-                    className="flex items-center justify-center w-5 h-5 shrink-0 rounded text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors"
+                    className="flex items-center justify-center w-5 h-5 shrink-0 rounded text-muted-foreground/50 hover:text-primary hover:bg-primary/10 transition-colors mt-0.5"
                 >
                     {expanded
                         ? <ChevronDown size={14} strokeWidth={2.5} />
@@ -40,9 +41,9 @@ export function TreeLabel({
                 <span className="w-5 shrink-0" />
             )}
 
-            <Icon size={16} strokeWidth={2} className="shrink-0" style={{ color: iconColor }} />
+            <Icon size={16} strokeWidth={2} className="shrink-0 mt-0.5" style={{ color: iconColor }} />
 
-            <div className="min-w-0">
+            <div className="min-w-0 space-y-1">
                 <div className="flex items-center gap-2 min-w-0">
                     <button
                         onClick={onToggle}
@@ -56,6 +57,7 @@ export function TreeLabel({
                 {subtitle && (
                     <span className="block text-[11px] text-muted-foreground/70 truncate">{subtitle}</span>
                 )}
+                {footer}
             </div>
         </div>
     );

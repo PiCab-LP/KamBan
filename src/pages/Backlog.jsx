@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useEpics } from '../hooks/useEpics';
 import { useBacklogStats } from '../hooks/useBacklogStats';
+import { useProfiles } from '../hooks/useProfiles';
 import { useAuth } from '../context/AuthContext';
 import { ENTITY_STATUS, canManageBacklog } from '../lib/domain';
 import { formatLocalDate, getInitials, getAvatarColor } from '../lib/format';
@@ -37,6 +38,7 @@ export default function Backlog() {
     } = useEpics();
     const { role } = useAuth();
     const canManage = canManageBacklog(role);
+    const { profilesById } = useProfiles();
 
     const [searchTerm, setSearchTerm] = useState('');
     const [filterStatus, setFilterStatus] = useState('all');
@@ -277,6 +279,7 @@ export default function Backlog() {
                                                         <EpicExpandedDetail
                                                             epicId={epic.id}
                                                             canManage={canManage}
+                                                            profilesById={profilesById}
                                                             openFeatureForm={addFeatureFor === epic.id}
                                                             onFeatureFormOpened={() => setAddFeatureFor(null)}
                                                             onContentChange={() => setChildCount((n) => n + 1)}

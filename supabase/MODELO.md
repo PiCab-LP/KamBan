@@ -16,7 +16,8 @@ epics ──┬── features ──┬── bugs ──┬── comments (bu
         │              └── notes    (feature_id, SET NULL)
         └── notes (epic_id, SET NULL)
 
-profiles (1 por usuario de auth.users)  ──<  bugs.creator_id / assigned_qa_id / assigned_dev_id
+profiles (1 por usuario de auth.users)  ──<  created_by (epics/features/bugs)
+                                             assigned_qa_id (features/bugs) · assigned_dev_id (bugs)
 ```
 
 La jerarquía borra en **CASCADE** hacia abajo. Las notas usan **SET NULL**: borrar un padre no
@@ -43,6 +44,7 @@ Nivel 1 de la jerarquía. Agrupa features.
 | `id` | uuid | auto | Clave primaria |
 | `name` | text | sí | 1–200 caracteres; único sin importar mayúsculas |
 | `status` | text | default `pendiente` | **Enumerado** (ver abajo) |
+| `created_by` | uuid | default `auth.uid()` | → `profiles` (autor). Los epics no se asignan |
 | `created_at` | timestamptz | default `now()` | Editable desde la UI |
 | `updated_at` | timestamptz | default `now()` | Lo mantiene el trigger `set_updated_at` |
 
@@ -64,12 +66,15 @@ Nivel 2. Cuelga de un Epic, agrupa bugs. Comparte el vocabulario de estados con 
 | `name` | text | sí | 1–200 caracteres |
 | `description` | text | opcional | Hasta 2000 caracteres |
 | `status` | text | default `pendiente` | **Enumerado** |
+| `created_by` | uuid | default `auth.uid()` | → `profiles` (autor) |
+| `assigned_qa_id` | uuid | opcional | → `profiles` (QA responsable). **Informativo**: no cambia qué ve el Dev |
 | `created_at` | timestamptz | default `now()` | Editable desde la UI |
 | `updated_at` | timestamptz | default `now()` | Trigger |
 
 **`status`:** `pendiente` · `en_progreso` · `en_qa` · `completado`
 
-> `completado` bloqueado si el feature tiene bugs en `nuevo`/`en_progreso`.
+> `completado` bloqueado si el feature tiene bugs en `nuevo`/`en_progreso`. El feature se asigna
+> solo a **QA**, nunca a un Dev; se puede asignar al crear o al editar.
 
 ---
 
@@ -89,7 +94,7 @@ Nivel 3. Cuelga de un feature. Es la tabla con más campos de estado.
 | `dev_status` | text | default `pendiente` | **Enumerado** — avance del Dev, independiente de `status` |
 | `is_reopened` | boolean | default `false` | Marca de reabierto; **no** es un estado enumerado |
 | `position` | numeric | default `0` | Orden dentro de la columna del tablero |
-| `creator_id` | uuid | default `auth.uid()` | → `profiles` (autor). Lo pone la base, no el cliente |
+| `created_by` | uuid | default `auth.uid()` | → `profiles` (autor). Lo pone la base, no el cliente |
 | `assigned_qa_id` | uuid | opcional | → `profiles` (QA responsable de verificar/cerrar) |
 | `assigned_dev_id` | uuid | opcional | → `profiles` (Dev que corrige) |
 | `created_at` | timestamptz | default `now()` | Editable desde la UI |

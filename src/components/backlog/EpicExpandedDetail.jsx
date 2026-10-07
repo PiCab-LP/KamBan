@@ -11,6 +11,7 @@ import { FeatureFormModal } from './FeatureFormModal';
 import { FeatureBugList } from './FeatureBugList';
 import { CommentsPanel } from './CommentsPanel';
 import { TreeLabel, RowActions } from './TreeRow';
+import { AssigneeChip } from './assignments';
 import { FEATURE_INDENT, NESTED_STRIP } from './treeLayout';
 
 /** Fila de mensaje (cargando / vacío) que ocupa las cuatro columnas de la tabla. */
@@ -29,7 +30,7 @@ function MessageRow({ children }) {
  * se insertan en la tabla del Epic (Backlog.jsx), de modo que Estado, Fecha y Acciones
  * caen en las mismas columnas que las del Epic.
  */
-export function EpicExpandedDetail({ epicId, canManage = true, onContentChange, openFeatureForm, onFeatureFormOpened }) {
+export function EpicExpandedDetail({ epicId, canManage = true, profilesById = {}, onContentChange, openFeatureForm, onFeatureFormOpened }) {
     const {
         features, loading, fetchFeatures,
         createFeature, updateFeature, updateFeatureStatus, deleteFeature,
@@ -135,6 +136,9 @@ export function EpicExpandedDetail({ epicId, canManage = true, onContentChange, 
                                                 {bugCount} {bugCount === 1 ? 'bug' : 'bugs'}
                                             </span>
                                         )}
+                                        footer={feature.assigned_qa_id && (
+                                            <AssigneeChip id={feature.assigned_qa_id} profilesById={profilesById} type="qa" roleLabel="QA" />
+                                        )}
                                     />
                                 </TableCell>
                                 <TableCell className="py-2">
@@ -167,6 +171,7 @@ export function EpicExpandedDetail({ epicId, canManage = true, onContentChange, 
                                 <FeatureBugList
                                     featureId={feature.id}
                                     canManage={canManage}
+                                    profilesById={profilesById}
                                     openBugForm={addBugFor === feature.id}
                                     onBugFormOpened={() => setAddBugFor(null)}
                                     onContentChange={handleBugChange}

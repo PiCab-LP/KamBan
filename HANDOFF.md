@@ -165,7 +165,8 @@ Se construyó autenticación real (Supabase Auth, email + contraseña) con tres 
 Qué se hizo (detalle en [README](README.md#autenticación-y-roles)):
 
 - Migración `supabase/migrations/20261006130000_auth_roles.sql`: tabla `profiles` con rol,
-  `user_role()`, columnas `creator_id`/`assigned_qa_id`/`assigned_dev_id`/`dev_status` en `bugs`,
+  `user_role()`, columnas `created_by`/`assigned_qa_id`/`assigned_dev_id`/`dev_status` en `bugs`
+  (más `created_by` en epics/features y `assigned_qa_id` en features, por `20261007120000`),
   RLS por rol y el trigger `guard_dev_bug_update` (SQLSTATE `QA002`).
 - Frontend: `AuthContext`, `ProtectedRoute`, login real, logout, nav y acciones filtradas por rol,
   selectores de asignación en la hoja de clasificación, y la pantalla `/mis-bugs` del Dev.
