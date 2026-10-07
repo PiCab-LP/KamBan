@@ -1,9 +1,8 @@
 # Handoff — QANBAN
 
-Estado al **5 de octubre de 2026**. Último commit: `1a1e613 feat: updated css variables so titles can be aligned`.
-No hay cambios sin commitear. Los commits recientes traen, en orden: el árbol de carpetas
-(`e0db7e7`), todo lo descrito en "Cambios recientes" salvo la tabla única (`e702f47`), y la
-tabla única de Epic/Feature/Bug (`1a1e613`, cuyo mensaje no lo refleja).
+Estado al **7 de octubre de 2026**. **Hay bastante trabajo de esta sesión sin commitear** (ver
+[Cambios de esta sesión](#cambios-de-esta-sesión-7-oct-2026)) y **migraciones nuevas por aplicar**
+(ver [Migraciones por aplicar](#migraciones-por-aplicar)). `npm run lint` y `npm run build` pasan.
 
 Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs con Cloudinary): ver
 [PENDIENTES.md](PENDIENTES.md).
@@ -34,27 +33,63 @@ No se migraron datos.
 
 ### Lo que funciona hoy
 
-Las migraciones **ya están aplicadas** en el proyecto remoto de Supabase, y estos flujos se
-verificaron de punta a punta contra la base real:
+El **esquema base** está aplicado en el proyecto remoto, pero las **migraciones de esta sesión
+(auth, roles, `created_by`, `full_name`, estados nuevos) pueden no estar aplicadas** — ver
+[Migraciones por aplicar](#migraciones-por-aplicar). Flujos que existen en el código:
 
+- **Autenticación real** (email + contraseña) con tres roles **qa / dev / viewer** y RLS estricto;
+  guard de rutas, login/logout, y gating de la UI por rol. Ver [README](README.md#autenticación-y-roles).
 - Crear, editar, borrar y cambiar estado de Epics, Features y Bugs.
 - Navegación en árbol dentro de una sola tabla: Epic → Feature → Bugs, desplegable por nivel.
+- **Creador (`created_by`) y asignación**: Features se asignan a un QA; Bugs a QA + Dev (al
+  registrar y al clasificar). Se muestra creador y asignados por su **nombre** (`full_name`).
 - Tablero de Bugs con **cinco estados**: Nuevo · En progreso · Bloqueado · Para despliegue ·
-  Completado (migración `20261007150000`). "Bug abierto" = Nuevo / En progreso / Bloqueado.
-  La vieja lógica de "Reabierto" se eliminó.
-- Agregar feature desde la fila del Epic y agregar bug desde la fila del Feature, incluso
-  con el padre colapsado (se despliega solo).
+  Completado. "Bug abierto" = Nuevo / En progreso / Bloqueado. Tarjetas con contexto
+  (Epic › Feature, título, descripción, severidad/prioridad, avance y responsables).
+- **Pantalla del Dev** (`/mis-bugs`): solo sus bugs asignados; marca su avance (`dev_status`) y comenta.
 - Comentarios en Features y en Bugs, con hilos y contadores independientes.
-- Métricas del backlog y contador de bugs por feature (se refresca al crear o borrar bugs).
-- Notas vinculables a Epic, Feature o Bug (o globales).
-- Modo claro/oscuro, instantáneo.
-- **Regla de completado** (sin verificar de punta a punta, ver abajo): un Feature o Epic no
-  pasa a "Completado" con bugs abiertos o, en el Epic, features sin completar. Alerta en el
-  frontend y rechazo en la base.
+- **Casos de Prueba**: drill-down Epic → Feature → tabla (maqueta).
+- **Notas**: autor, fechas de creado/editado con hora, vínculo a Epic/Feature/Bug, colores, fijar.
+- **Regla de completado**: un Feature o Epic no pasa a "Completado" con bugs abiertos o, en el Epic,
+  features sin completar (triggers + aviso en el frontend).
+- Modo claro/oscuro, instantáneo. Responsive (desktop-first, hasta laptops pequeñas).
 
-`npm run lint` y `npm run build` pasan limpios.
+### Cambios de esta sesión (7 oct 2026)
 
-### Cambios recientes (ya commiteados)
+Trabajo hecho en esta sesión, **sin commitear** salvo que se indique. Detalle de cada migración en
+[supabase/README.md](supabase/README.md) y el modelo en [supabase/MODELO.md](supabase/MODELO.md).
+
+- **Autenticación + roles + RLS estricto** (migración `20261006130000`): tabla `profiles`
+  (qa/dev/viewer), `user_role()`, RLS por rol, columnas de asignación en `bugs` y el trigger
+  `guard_dev_bug_update` (SQLSTATE `QA002`, el Dev solo puede cambiar `dev_status`). Frontend:
+  `AuthContext`, `ProtectedRoute`, login/logout reales, `/mis-bugs`, gating por rol.
+  - Se afinó `AuthContext` por un **deadlock de Supabase** (no hacer `await` a Supabase dentro del
+    callback de `onAuthStateChange`: se difiere con `setTimeout`) y un **parpadeo de rol** en la
+    primera carga (no se renderiza ruta hasta conocer el rol). Logout con `scope: 'global'`.
+- **Creador y asignación** (migración `20261007120000`): se unificó el creador a **`created_by`**
+  (renombró `bugs.creator_id`), se añadió a epics/features y `assigned_qa_id` a features. Selectores
+  de asignación en los formularios de Feature y de Bug (y en el Tablero); se muestra "Creado por" y
+  los asignados en las filas del Backlog. Helpers en `src/components/backlog/assignments.jsx`.
+- **Nombre completo** (migración `20261007140000`): `profiles.full_name`. La UI muestra a las
+  personas por su nombre (correo de respaldo); regla única en `useProfiles` (`profileDisplayName`).
+- **Estados del Tablero** (migración `20261007150000`): `nuevo · en_progreso · bloqueado ·
+  para_despliegue · completado` (remapea resuelto→para_despliegue, cerrado→completado). Se **eliminó
+  la lógica de "Reabierto"**. "Bug abierto" = nuevo/en_progreso/bloqueado (se actualizaron los guards
+  de completado).
+- **Tarjetas del Tablero rediseñadas**: sin ícono de bug, franja izquierda con el color del estado,
+  y campos etiquetados (Epic › Feature, título, descripción, Severidad:, Prioridad:, Avance Dev:,
+  QA asignado:, Dev asignado:).
+- **Casos de Prueba**: de tabla+filtro a **drill-down Epic → Feature → tabla** con breadcrumb. La
+  tabla se extrajo a `src/components/testcases/TestCaseTable.jsx`; se eliminó el `EpicFilter`.
+- **Notas** (migración `20261007130000`): `notes.created_by`; se muestra autor (esquina del header),
+  fechas de creado/editado con hora, chip de vínculo reordenado, barra de acciones por ícono, y se
+  quitó el color "sin color" (toda nota lleva color).
+- **Responsive** (desktop-first): sidebar más angosto y menos padding en laptops pequeñas, paddings
+  y anchos de columna del tablero adaptables.
+- **Seguridad de dependencias**: se resolvieron las vulnerabilidades de `npm audit` moviendo `shadcn`
+  a `devDependencies` (0 vulnerabilidades en producción).
+
+### Cambios recientes (anteriores a esta sesión, ya commiteados)
 
 - **Tabla única.** Antes, los features y bugs eran listas con rejilla propia dentro de una
   celda del Epic, con cabeceras de columna repetidas y ~40 líneas de cálculo para alinear su
@@ -69,23 +104,21 @@ verificaron de punta a punta contra la base real:
   e702f47:src/components/backlog/FeatureBugList.jsx`, y lo mismo para `EpicExpandedDetail.jsx`,
   `TreeRow.jsx`, `treeLayout.js` y `Backlog.jsx`. Los anchos de columna y sangrías viven en
   `src/components/backlog/treeLayout.js`.
-- **Los bugs se registran en el Backlog y se clasifican en el Tablero.** Para no manejar
-  las mismas opciones en dos sitios, el Backlog ya no muestra ni edita estado, severidad,
-  prioridad ni la etiqueta "Reabierto" de un bug; solo título, descripción y fecha. Todo
-  eso vive en el Tablero de Bugs: la tarjeta muestra severidad, prioridad y "Reabierto", y
-  al abrirla sale la hoja *Clasificar Bug* (estado, severidad, prioridad; el título y la
-  descripción solo se leen). `BugFormSheet` tiene por eso dos modos, `backlog` y `board`.
-  Un bug nuevo nace con los defaults de la base: `nuevo`, severidad `media`, prioridad `media`.
-  El menú de acciones de la fila del bug (Notas, editar, eliminar) sí se queda en el Backlog.
+- **Los bugs se registran en el Backlog y se clasifican en el Tablero.** El Backlog edita título,
+  descripción y fecha (y ahora también la asignación QA/Dev); el estado, la severidad y la prioridad
+  viven en el Tablero. Al abrir un bug sale la hoja *Clasificar Bug*. `BugFormSheet` tiene por eso
+  dos modos, `backlog` y `board`. Un bug nuevo nace con los defaults de la base: `nuevo`, severidad
+  `media`, prioridad `media`. (La etiqueta "Reabierto" que esto mencionaba se **eliminó** en esta
+  sesión.)
 - **"Ver en el tablero →"** en cada bug del Backlog lleva a `/bugs?bug=<id>`. El Tablero
   centra esa tarjeta, la resalta 3,5 s y limpia el parámetro de la URL para que recargar no
   la resalte otra vez. El botón ocupa la celda de Estado de la fila del bug.
 - **Mockup de imágenes en el formulario de bug** (`BugImagesPlaceholder`): solo la zona de
   arrastrar y soltar, inerte y marcada "Próximamente". Detalle y decisiones
   pendientes en [PENDIENTES.md](PENDIENTES.md).
-- **`updateBug` ahora respeta las reglas de estado.** Antes, cambiar el estado desde un
-  formulario no marcaba "Reabierto" ni recolocaba la tarjeta; ahora lo hace igual que el
-  drag. Se eliminó `updateBugStatus`, que solo usaba el dropdown del Backlog.
+- **`updateBug` y el drag comparten la recolocación de tarjeta** al cambiar de columna. (La
+  lógica de "Reabierto" que esto incluía se eliminó en esta sesión.) Se eliminó `updateBugStatus`,
+  que solo usaba el dropdown del Backlog.
 - **Fecha de creación editable** en features y bugs (`CreatedAtField`), también visible
   como columna. **No hizo falta migración**: se escribe en `created_at`, que ya era una
   columna normal con default `now()`, sin restricción en RLS. Probado de punta a punta
@@ -95,6 +128,28 @@ verificaron de punta a punta contra la base real:
 ---
 
 ## Pendientes
+
+### Migraciones por aplicar 🔴
+
+Varias migraciones de esta sesión pueden no estar aplicadas en tu proyecto de Supabase. Aplícalas en
+orden en el **SQL Editor** (la lista completa y qué hace cada una está en
+[supabase/README.md](supabase/README.md)):
+
+| # | Archivo | Qué trae |
+|---|---|---|
+| 4 | `20261006120000_completion_guard.sql` | Triggers: no completar Epic/Feature con trabajo pendiente. |
+| 5 | `20261006130000_auth_roles.sql` | Auth real, roles, RLS estricto, asignación de bugs. |
+| 6 | `20261007120000_creators_and_assignment.sql` | `created_by` (renombra `creator_id`) y `assigned_qa_id` en features. |
+| 7 | `20261007130000_notes_created_by.sql` | Autor de las notas. |
+| 8 | `20261007140000_profiles_full_name.sql` | Nombre a mostrar. |
+| 9 | `20261007150000_bug_statuses.sql` | Estados nuevos del tablero (remapea resuelto/cerrado). |
+
+**Bootstrap tras aplicarlas:** crear cuentas en *Authentication → Users* y, en `public.profiles`,
+fijar su `role` y su `full_name` a mano. **Sin al menos un `qa` no se puede operar** (todas nacen
+`viewer`). Si `full_name` queda vacío, la UI muestra el correo.
+
+> No se pudo verificar de punta a punta contra la base real desde aquí (sin acceso a localhost/SQL
+> Editor en esta sesión). `lint` y `build` pasan; la verificación funcional queda del lado del usuario.
 
 ### 1. Casos de Prueba — definir los valores seleccionables 🔴
 
@@ -142,48 +197,26 @@ Verificado a mano por el usuario (octubre de 2026). Antes no se había podido pr
 herramienta de automatización arrastra en un solo salto y el `PointerSensor` de dnd-kit exige
 `activationConstraint: { distance: 10 }`.
 
-### 4. Regla de completado: aplicar la migración y probar 🔴
+### 4. Regla de completado: probar contra la base 🔴
 
-El código está escrito (`src/lib/completionGuard.js`, `useEpics`, `useFeatures`) y `lint` y
-`build` pasan, pero **no se ha probado contra la base real**: no había `.env` en la máquina donde
-se escribió. Falta:
-
-1. Pegar `supabase/migrations/20261006120000_completion_guard.sql` en el SQL Editor de Supabase.
-2. Probar: Feature con un bug `nuevo` → Completado debe avisar y no cambiar; resolver/cerrar el
-   bug y reintentar debe dejarlo pasar; igual con un Epic con features sin completar.
-3. Probar el trigger solo (sin la UI) con los `UPDATE` del final de la migración.
+El código está escrito (`src/lib/completionGuard.js`, `useEpics`, `useFeatures`) y los triggers
+viven en las migraciones 4 y 9. Tras aplicarlas, probar: un Feature con un bug en `nuevo`/
+`en_progreso`/`bloqueado` → Completado debe avisar y no cambiar; pasar el bug a `para_despliegue`/
+`completado` y reintentar debe dejarlo pasar; igual con un Epic con features sin completar.
 
 **Lo que la regla NO cubre** (decisión pendiente): solo mira hacia abajo al *cambiar a*
-Completado. Si después **se crea un bug** en un Feature completado, o **se reabre uno**, o se
-**agrega un Feature** a un Epic completado, queda un padre Completado con trabajo abierto. Las
-opciones son bloquear esas acciones, mostrar una advertencia, o aceptarlo. Ojo con la tentación de
-"bajar el padre a En progreso automáticamente": sería estado derivado, rechazado antes (ver
-*Estados manuales, nunca derivados*).
+Completado. Si después **se crea un bug** en un Feature completado, o se **agrega un Feature** a un
+Epic completado, queda un padre Completado con trabajo abierto. Las opciones son bloquear esas
+acciones, mostrar una advertencia, o aceptarlo. Ojo con la tentación de "bajar el padre a En
+progreso automáticamente": sería estado derivado, rechazado antes (ver *Estados manuales, nunca
+derivados*).
 
-### 5. Autenticación y roles — implementado, falta aplicar la migración y probar 🔴
+### 5. Autenticación y roles — probar contra la base 🔴
 
-Se construyó autenticación real (Supabase Auth, email + contraseña) con tres roles
-(**qa / dev / viewer**), RLS estricto por rol y asignación de bugs. `lint` y `build` pasan, pero
-**no se probó contra la base real** (no había `.env` ni la migración aplicada en esta máquina).
-
-Qué se hizo (detalle en [README](README.md#autenticación-y-roles)):
-
-- Migración `supabase/migrations/20261006130000_auth_roles.sql`: tabla `profiles` con rol,
-  `user_role()`, columnas `created_by`/`assigned_qa_id`/`assigned_dev_id`/`dev_status` en `bugs`
-  (más `created_by` en epics/features y `assigned_qa_id` en features, por `20261007120000`),
-  RLS por rol y el trigger `guard_dev_bug_update` (SQLSTATE `QA002`).
-- Frontend: `AuthContext`, `ProtectedRoute`, login real, logout, nav y acciones filtradas por rol,
-  selectores de asignación en la hoja de clasificación, y la pantalla `/mis-bugs` del Dev.
-
-**Para dejarlo funcionando:**
-
-1. Aplicar la migración 5 en el SQL Editor (ver [supabase/README.md](supabase/README.md)).
-2. Crear 3 cuentas de prueba en el dashboard (Authentication → Users) y, en `public.profiles`,
-   poner una en `qa`, otra en `dev`, otra en `viewer` (y cargar su `full_name`, que la UI usa para
-   mostrar a cada persona; si queda vacío, se ve el correo). **Sin al menos un `qa` no se puede
-   operar** (todas nacen `viewer`).
-3. Probar los tres flujos (ver la sección de verificación del plan): QA hace todo y asigna; el Dev
-   solo ve sus bugs y solo mueve `dev_status`; el Viewer solo lee.
+Está todo en el código (ver [Cambios de esta sesión](#cambios-de-esta-sesión-7-oct-2026) y
+[README](README.md#autenticación-y-roles)); falta **aplicar las migraciones 5–8** y probar los tres
+flujos: QA hace todo y asigna; el Dev solo ve sus bugs y solo mueve `dev_status`; el Viewer solo lee.
+Las migraciones y el bootstrap están arriba en [Migraciones por aplicar](#migraciones-por-aplicar).
 
 **Pendientes menores conocidos:**
 
@@ -314,4 +347,7 @@ cada píxel cuenta.
 | Sesión y rol del usuario | `src/context/AuthContext.jsx` + `src/components/auth/ProtectedRoute.jsx` |
 | Qué puede cada rol | `src/lib/domain.js` (`ROLES`, `canManageBacklog`) + la migración `20261006130000_auth_roles.sql` |
 | La pantalla del Dev | `src/pages/MyBugs.jsx` + `setDevStatus` en `src/hooks/useBugs.js` |
+| Nombres / asignación / creador | `src/hooks/useProfiles.js` (`profileDisplayName`) + `src/components/backlog/assignments.jsx` |
+| Las notas | `src/pages/Notes.jsx` + `src/components/notes/NoteCard.jsx` + `src/hooks/useNotes.js` |
+| El modelo completo (tablas, estados) | `supabase/MODELO.md` |
 | El esquema SQL | `supabase/README.md` y `supabase/migrations/` |

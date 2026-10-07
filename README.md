@@ -28,7 +28,7 @@ Estado del proyecto y decisiones de diseño: [HANDOFF.md](HANDOFF.md).
 | Tailwind CSS | v4 — configuración vía `@theme` en `src/index.css`. `tailwind.config.js` está vacío y solo existe porque `components.json` (CLI de shadcn) lo referencia |
 | shadcn / Radix | componentes en `src/components/ui/` |
 | @dnd-kit | drag & drop del tablero de bugs |
-| Supabase | `@supabase/supabase-js`, sin autenticación real (ver aviso abajo) |
+| Supabase | `@supabase/supabase-js` con **autenticación real** (email + contraseña) y RLS por rol. Ver [Autenticación y roles](#autenticación-y-roles) |
 | react-router-dom | 7 |
 | Despliegue | Vercel (`vercel.json` reescribe todo a `index.html` para el router). Hay que definir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en las variables de entorno del proyecto en Vercel |
 
@@ -51,10 +51,12 @@ Ambos valores salen del dashboard de Supabase, en **Project Settings → API**.
 npm run dev
 ```
 
-**El esquema de la base de datos ya está aplicado** en el proyecto remoto de Supabase.
-Si clonas en otra máquina solo necesitas el `.env`; no hay que volver a correr las
-migraciones. Solo se ejecutan al crear un proyecto de Supabase desde cero — en ese
-caso, sigue el orden que indica [supabase/README.md](supabase/README.md).
+**El esquema base ya está aplicado** en el proyecto remoto de Supabase; si clonas en otra
+máquina solo necesitas el `.env`. Las migraciones solo se corren al crear un proyecto desde
+cero, en el orden que indica [supabase/README.md](supabase/README.md). **Ojo:** las migraciones
+más recientes (auth y roles, `created_by`, `full_name`, estados nuevos del tablero) pueden no
+estar aplicadas aún en tu proyecto; revisa la tabla de migraciones en
+[supabase/README.md](supabase/README.md) y el [HANDOFF.md](HANDOFF.md).
 
 ### Scripts
 
@@ -73,7 +75,7 @@ caso, sigue el orden que indica [supabase/README.md](supabase/README.md).
 | `/backlog` | Backlog de QA: una sola tabla (Elemento · Estado · Fecha de creación · Acciones) donde los Features y Bugs son filas anidadas bajo su Epic | qa (edita), viewer (solo lee) |
 | `/bugs` | Tablero de Bugs: 5 columnas (Nuevo · En progreso · Bloqueado · Para despliegue · Completado), drag & drop para cambiar estado; al abrir un bug se clasifica (estado, severidad, prioridad) y se asigna | qa (edita), viewer (solo lee) |
 | `/mis-bugs` | Mis Bugs: los bugs asignados al Dev; marca su avance (Corregido/Revisado) y comenta | dev |
-| `/casos-de-prueba` | Casos de Prueba — en construcción | qa |
+| `/casos-de-prueba` | Casos de Prueba — navegación Epic → Feature → tabla (drill-down con breadcrumb); la tabla es aún una maqueta | qa |
 | `/notes` | Notas del equipo | qa |
 
 `/` redirige según el rol: el Dev a `/mis-bugs`, los demás a `/backlog`. Toda ruta exige sesión
@@ -89,17 +91,20 @@ src/
     format.js         Fechas, iniciales y colores de avatar
     supabaseClient.js Cliente singleton
   hooks/              Toda consulta a Supabase vive aquí, nunca en los componentes
-    useEpics · useFeatures · useBugs · useComments · useNotes · useBacklogStats
-  pages/              Backlog · BugBoard · TestCases · Notes · Login
+    useEpics · useFeatures · useBugs · useComments · useNotes · useBacklogStats · useProfiles
+  pages/              Backlog · BugBoard · MyBugs · TestCases · Notes · Login
   components/
+    auth/             ProtectedRoute (guard de sesión y rol)
     backlog/          Jerarquía Epic→Feature→Bug, formularios y comentarios
       TreeRow.jsx     Etiqueta y acciones compartidas de las filas del árbol
       treeLayout.js   Anchos de columna y sangrías del árbol
       CreatedAtField  Selector de fecha de creación de features y bugs
+      assignments.jsx Selector de asignación, "Creado por" y chips de asignado
       BugImagesPlaceholder  Mockup (inerte) de la zona para adjuntar imágenes a un bug
+    testcases/        Tabla de casos de prueba (maqueta) para el drill-down
     notes/            Tarjetas y formulario de notas
     ui/               shadcn + componentes propios compartidos
-  context/            ToastContext · ThemeContext
+  context/            ToastContext · ThemeContext · AuthContext
 supabase/
   migrations/         Esquema versionado, en orden cronológico
   introspection/      Scripts de solo lectura
@@ -132,12 +137,12 @@ nombre del Epic, Feature o Bug; lo único que cambia entre niveles es su **sangr
 todos, así que quedan alineadas sin cálculos. La tabla usa `table-fixed` para que los anchos
 no cambien al desplegar filas.
 
-**Los bugs se registran en el Backlog y se clasifican en el Tablero.** El Backlog solo
-muestra y edita título, descripción y fecha de creación de un bug; el estado, la severidad
-y la prioridad se ven y cambian únicamente desde el Tablero de Bugs. `BugFormSheet` tiene
-un modo para cada sitio (`mode="backlog"` y `mode="board"`). No vuelvas a poner esos
-controles en el Backlog: la idea es que cada opción viva en un solo lugar. Cada bug del
-Backlog tiene un enlace "Ver en el tablero" (`/bugs?bug=<id>`) que resalta su tarjeta.
+**Los bugs se registran en el Backlog y se clasifican en el Tablero.** El Backlog edita título,
+descripción y fecha de creación; el estado, la severidad y la prioridad se ven y cambian únicamente
+desde el Tablero de Bugs. `BugFormSheet` tiene un modo para cada sitio (`mode="backlog"` y
+`mode="board"`). La **asignación** de QA y Dev sí se puede hacer en los dos (al registrar y al
+clasificar). No vuelvas a poner estado/severidad/prioridad en el Backlog: cada una vive en un solo
+lugar. Cada bug del Backlog tiene un enlace "Ver en el tablero" (`/bugs?bug=<id>`) que resalta su tarjeta.
 
 **Las fechas de creación son editables.** Features y bugs permiten fijar su fecha de
 creación al crearlos o editarlos (`CreatedAtField`). Se guarda en la propia columna
@@ -147,12 +152,17 @@ locales para que el huso horario no la corra de día (`dateInputToTimestamp` en
 `created_at`, así que cambiar la fecha también cambia su posición en la lista.
 
 **Un Epic o Feature no se puede marcar "Completado" con trabajo pendiente debajo.** Un
-Feature exige no tener bugs en `nuevo`/`en_progreso`; un Epic exige todos sus features en
-Completado y ningún bug abierto. Se hace cumplir en dos capas: la base la impone con triggers
-(`20261006120000_completion_guard.sql`, SQLSTATE `QA001`) y el frontend lo comprueba antes
-(`src/lib/completionGuard.js`, llamado desde `useEpics` y `useFeatures`) para avisar con un
-toast —desde el dropdown— o en línea —desde el formulario— sin mover el estado. El estado
-sigue siendo manual: la regla solo niega valores incoherentes, nunca los calcula.
+Feature exige no tener bugs abiertos (`nuevo`/`en_progreso`/`bloqueado`); un Epic exige todos sus
+features en Completado y ningún bug abierto. Se hace cumplir en dos capas: la base la impone con
+triggers (`20261006120000_completion_guard.sql`, con el conjunto de "abiertos" actualizado en
+`20261007150000`, SQLSTATE `QA001`) y el frontend lo comprueba antes (`src/lib/completionGuard.js`,
+llamado desde `useEpics` y `useFeatures`) para avisar con un toast —desde el dropdown— o en línea
+—desde el formulario— sin mover el estado. El estado sigue siendo manual: la regla solo niega
+valores incoherentes, nunca los calcula.
+
+**Las personas se muestran por su nombre.** Asignados, creador, autor de notas y la barra lateral
+usan el `full_name` del perfil (o el correo si no tiene). La regla única vive en `useProfiles`
+(`profileDisplayName`), que expone `profilesById` (id → nombre).
 
 **Las acciones de fila siguen siempre la misma gramática**: las constructivas (agregar,
 notas) van con texto a la vista; editar y eliminar viven en el menú de tres puntos.
