@@ -1,95 +1,95 @@
-import { Fragment, useMemo, useState } from 'react';
-import { Table, TableHeader, TableHead, TableRow, TableBody, TableCell } from '@/components/ui/table';
-import { Card, CardContent } from '@/components/ui/card';
+import { useState } from 'react';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FlaskConical, Plus, ChevronDown, ChevronUp, SearchX } from 'lucide-react';
+import {
+    FlaskConical, Plus, Folder, FolderOpen, ChevronRight, ChevronLeft, Layers, Loader2,
+} from 'lucide-react';
 import { useEpics } from '@/hooks/useEpics';
-import { EpicFilter } from '@/components/testcases/EpicFilter';
+import { useFeatures } from '@/hooks/useFeatures';
+import { TestCaseTable } from '@/components/testcases/TestCaseTable';
 
-/**
- * Campos cortos: van como columnas de la tabla.
- * Los de texto largo viven en el detalle expandido (DETAIL_FIELDS) para no
- * inflar el ancho; solo esos cuatro sumaban ~900px.
- */
-const COLUMNS = [
-    { key: 'case_id', label: 'ID Caso', width: 110 },
-    { key: 'suite', label: 'Suite', width: 170 },
-    { key: 'application', label: 'Aplicación', width: 160 },
-    { key: 'module', label: 'Módulo / Pantalla', width: 180 },
-    { key: 'title', label: 'Título', width: 320 },
-    { key: 'type', label: 'Tipo', width: 140 },
-    { key: 'priority', label: 'Prioridad', width: 130 },
-    { key: 'required_role', label: 'Rol Requerido', width: 170 },
-    { key: 'company', label: 'Compañía', width: 160 },
-    { key: 'automatable', label: 'Automatizable', width: 140 },
-    { key: 'status', label: 'Estado del Caso', width: 160 },
-];
-
-const DETAIL_FIELDS = [
-    { key: 'preconditions', label: 'Precondiciones' },
-    { key: 'steps', label: 'Pasos' },
-    { key: 'expected_result', label: 'Resultado Esperado' },
-    { key: 'test_data', label: 'Datos de Prueba' },
-];
-
-/**
- * Fila de ejemplo para poder evaluar la estructura antes de que existan casos
- * reales. Se elimina en cuanto se conecte la tabla a la base de datos.
- */
-const EXAMPLE_ROW = {
-    id: 'example',
-    epic_id: null, // FK a epics (nullable); la columna real se crea con la migración de test_cases.
-    case_id: 'TC-001',
-    suite: 'Autenticación',
-    application: 'Portal Web',
-    module: 'Login',
-    title: 'Inicio de sesión con credenciales válidas',
-    type: 'Funcional',
-    priority: 'Alta',
-    required_role: 'Usuario registrado',
-    company: '—',
-    automatable: 'Sí',
-    status: 'Diseñado',
-    preconditions: 'El usuario existe en la base de datos y su cuenta está activa.\nEl portal está disponible.',
-    steps: '1. Abrir la pantalla de login.\n2. Ingresar correo y contraseña válidos.\n3. Pulsar "Ingresar".',
-    expected_result: 'El usuario accede al panel principal y se muestra su nombre en la barra superior.',
-    test_data: 'Correo: qa.demo@empresa.com\nContraseña: Qa#Demo2026',
-};
-
-function TestCaseExpandedDetail({ testCase }) {
+/** Tarjeta-carpeta clickable para un Epic o un Feature. */
+function FolderCard({ onClick, icon: Icon = Folder, iconColor = 'var(--primary)', title, subtitle }) {
     return (
-        <div className="bg-muted/10 border-t border-border/40">
-            {/* sticky left-0: la celda abarca todo el ancho de la tabla, así que sin
-                esto el detalle queda a la izquierda y se pierde al hacer scroll. */}
-            <div className="sticky left-0 w-[min(1024px,100%)] px-8 py-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                    {DETAIL_FIELDS.map((field) => (
-                        <div key={field.key} className="space-y-2">
-                            <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-                                {field.label}
-                            </h4>
-                            <p className="text-[13px] leading-relaxed text-foreground whitespace-pre-line">
-                                {testCase[field.key] || '—'}
-                            </p>
-                        </div>
-                    ))}
-                </div>
+        <button
+            onClick={onClick}
+            className="group flex items-center gap-3 text-left p-4 rounded-2xl border border-border/50 bg-card hover:border-primary/40 hover:shadow-lg hover:shadow-black/5 transition-all"
+        >
+            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 shrink-0">
+                <Icon size={18} style={{ color: iconColor }} strokeWidth={2.2} />
             </div>
+            <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-foreground truncate">{title}</p>
+                {subtitle && <p className="text-xs text-muted-foreground/70 truncate">{subtitle}</p>}
+            </div>
+            <ChevronRight size={16} className="text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
+        </button>
+    );
+}
+
+/** Estado vacío centrado, reutilizado en los distintos niveles. */
+function EmptyState({ icon: Icon, title, hint }) {
+    return (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-muted/20 text-muted-foreground mb-4">
+                <Icon className="h-8 w-8" />
+            </div>
+            <h3 className="text-base font-bold text-foreground">{title}</h3>
+            {hint && <p className="text-sm text-muted-foreground mt-2 max-w-xs">{hint}</p>}
+        </div>
+    );
+}
+
+function LoadingRow({ label }) {
+    return (
+        <div className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
+            <Loader2 size={18} className="animate-spin" />
+            <span className="text-xs font-bold">{label}</span>
+        </div>
+    );
+}
+
+/** Nivel 1: features de un Epic (hook propio para no consultar hasta entrar al Epic). */
+function FeatureGrid({ epicId, onSelect }) {
+    const { features, loading } = useFeatures(epicId);
+
+    if (loading) return <LoadingRow label="Cargando features..." />;
+    if (features.length === 0) {
+        return (
+            <EmptyState
+                icon={Folder}
+                title="Este epic no tiene features todavía"
+                hint="Crea features en el Backlog de QA para registrar sus casos de prueba."
+            />
+        );
+    }
+
+    return (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {features.map((feature) => (
+                <FolderCard
+                    key={feature.id}
+                    icon={Folder}
+                    iconColor="var(--primary)"
+                    title={feature.name}
+                    subtitle={feature.description}
+                    onClick={() => onSelect({ id: feature.id, name: feature.name })}
+                />
+            ))}
         </div>
     );
 }
 
 export default function TestCases() {
     const { epics, loading: epicsLoading } = useEpics();
-    const [expandedId, setExpandedId] = useState(null);
-    const [epicFilter, setEpicFilter] = useState(null);
+    const [selectedEpic, setSelectedEpic] = useState(null);
+    const [selectedFeature, setSelectedFeature] = useState(null);
 
-    // Hoy solo existe la fila de ejemplo; al conectar la tabla, esta lista sale de un hook.
-    const testCases = useMemo(() => [EXAMPLE_ROW], []);
-    const visibleCases = useMemo(
-        () => testCases.filter((tc) => epicFilter === null || tc.epic_id === epicFilter),
-        [testCases, epicFilter],
-    );
+    const goToEpics = () => { setSelectedEpic(null); setSelectedFeature(null); };
+    const goToFeatures = () => setSelectedFeature(null);
+
+    // Nivel activo: derivado del estado.
+    const level = selectedFeature ? 'table' : selectedEpic ? 'features' : 'epics';
 
     return (
         // Sin tope de ancho: con 11 columnas, cada píxel cuenta.
@@ -101,128 +101,112 @@ export default function TestCases() {
                         <h1 className="text-2xl font-black text-foreground tracking-tight">
                             Casos de Prueba
                         </h1>
-                        <p className="text-sm text-muted-foreground">
-                            Diseño y ejecución de casos de prueba de QA.
+                    </div>
+                    {level === 'table' && (
+                        <Button
+                            disabled
+                            title="Pendiente de definir los valores de cada campo"
+                            className="gap-2 text-[13px] font-bold px-6 h-11 rounded-2xl shadow-lg shadow-primary/20"
+                            style={{ background: 'var(--primary)', color: 'white' }}
+                        >
+                            <Plus size={18} strokeWidth={3} />
+                            Nuevo Caso
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Breadcrumb + volver. Altura fija (min-h-9) para que el texto no salte
+                cuando aparece/desaparece el botón de volver. */}
+            <div className="flex items-center gap-3 min-h-9">
+                {level !== 'epics' && (
+                    <button
+                        onClick={level === 'table' ? goToFeatures : goToEpics}
+                        title="Volver"
+                        className="flex items-center justify-center w-9 h-9 rounded-xl border border-border/60 bg-card text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors shrink-0"
+                    >
+                        <ChevronLeft size={18} />
+                    </button>
+                )}
+                <nav className="flex items-center gap-1.5 text-xs font-bold min-w-0 flex-wrap">
+                    <button
+                        onClick={goToEpics}
+                        className={level === 'epics' ? 'text-foreground' : 'text-muted-foreground hover:text-primary transition-colors'}
+                    >
+                        Casos de Prueba
+                    </button>
+                    {selectedEpic && (
+                        <>
+                            <ChevronRight size={13} className="text-muted-foreground/40 shrink-0" />
+                            <button
+                                onClick={goToFeatures}
+                                className={`truncate ${level === 'features' ? 'text-foreground' : 'text-muted-foreground hover:text-primary transition-colors'}`}
+                            >
+                                {selectedEpic.name}
+                            </button>
+                        </>
+                    )}
+                    {selectedFeature && (
+                        <>
+                            <ChevronRight size={13} className="text-muted-foreground/40 shrink-0" />
+                            <span className="text-foreground truncate">{selectedFeature.name}</span>
+                        </>
+                    )}
+                </nav>
+            </div>
+
+            {/* Nivel 0 — Epics */}
+            {level === 'epics' && (
+                <section className="animate-kanban-slide-up">
+                    {epicsLoading ? (
+                        <LoadingRow label="Cargando epics..." />
+                    ) : epics.length === 0 ? (
+                        <EmptyState
+                            icon={Layers}
+                            title="Aún no hay epics"
+                            hint="Crea epics y features en el Backlog de QA; aquí registrarás sus casos de prueba."
+                        />
+                    ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                            {epics.map((epic) => (
+                                <FolderCard
+                                    key={epic.id}
+                                    title={epic.name}
+                                    onClick={() => setSelectedEpic({ id: epic.id, name: epic.name })}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </section>
+            )}
+
+            {/* Nivel 1 — Features del Epic */}
+            {level === 'features' && (
+                <section className="animate-kanban-slide-up">
+                    <div className="flex items-center gap-2 mb-4 text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
+                        <FolderOpen size={14} className="text-primary" />
+                        Features de {selectedEpic.name}
+                    </div>
+                    <FeatureGrid epicId={selectedEpic.id} onSelect={setSelectedFeature} />
+                </section>
+            )}
+
+            {/* Nivel 2 — Tabla de casos del Feature */}
+            {level === 'table' && (
+                <section className="animate-kanban-slide-up space-y-4">
+                    <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border bg-muted/20">
+                        <FlaskConical size={14} className="text-muted-foreground/60 shrink-0" />
+                        <p className="text-[11px] text-muted-foreground">
+                            Estructura de ejemplo. Falta definir los valores seleccionables de cada campo
+                            antes de conectar la tabla a la base de datos.
                         </p>
                     </div>
-                    <Button
-                        disabled
-                        title="Pendiente de definir los valores de cada campo"
-                        className="gap-2 text-[13px] font-bold px-6 h-11 rounded-2xl shadow-lg shadow-primary/20"
-                        style={{ background: 'var(--primary)', color: 'white' }}
-                    >
-                        <Plus size={18} strokeWidth={3} />
-                        Nuevo Caso
-                    </Button>
-                </div>
-            </div>
 
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-border bg-muted/20">
-                <FlaskConical size={14} className="text-muted-foreground/60 shrink-0" />
-                <p className="text-[11px] text-muted-foreground">
-                    Estructura de ejemplo. Falta definir los valores seleccionables de cada campo
-                    antes de conectar la tabla a la base de datos.
-                </p>
-            </div>
-
-            <section className="animate-kanban-slide-up" style={{ animationDelay: '100ms' }}>
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <div className="flex items-center gap-3">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
-                            Filtrar por:
-                        </span>
-                        <EpicFilter
-                            epics={epics}
-                            value={epicFilter}
-                            onChange={setEpicFilter}
-                            loading={epicsLoading}
-                        />
-                    </div>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest bg-muted/30 px-3 py-1.5 rounded-lg border border-border/40">
-                        {visibleCases.length} {visibleCases.length === 1 ? 'caso' : 'casos'}
-                    </p>
-                </div>
-
-                <Card className="border-border/40 overflow-hidden bg-card shadow-lg shadow-black/5 rounded-2xl p-0">
-                    <CardContent className="p-0 bg-muted">
-                        {/* Table ya trae su propio contenedor con overflow-x-auto;
-                            envolverlo en otro anida dos scrolls y la rueda no engancha. */}
-                        <Table>
-                            <TableHeader className="bg-muted border-b-2 border-border">
-                                <TableRow className="hover:bg-transparent border-none">
-                                    {/* El control de detalle va primero: al final obligaría a
-                                        cruzar toda la tabla para abrirlo. */}
-                                    <TableHead className="h-16 pl-6" style={{ width: 48, minWidth: 48 }} />
-                                    {COLUMNS.map((column) => (
-                                        <TableHead
-                                            key={column.key}
-                                            className="text-[10px] font-black uppercase tracking-[0.15em] text-foreground/80 h-16 whitespace-nowrap"
-                                            style={{ width: column.width, minWidth: column.width }}
-                                        >
-                                            {column.label}
-                                        </TableHead>
-                                    ))}
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody className="bg-card">
-                                {visibleCases.map((testCase) => {
-                                    const isOpen = expandedId === testCase.id;
-                                    return (
-                                        <Fragment key={testCase.id}>
-                                            <TableRow className={`border-b border-border/60 transition-colors ${isOpen ? 'bg-muted/10' : 'hover:bg-muted/10'}`}>
-                                                <TableCell className="py-4 pl-6">
-                                                    <button
-                                                        onClick={() => setExpandedId(isOpen ? null : testCase.id)}
-                                                        title={isOpen ? 'Ocultar detalle' : 'Ver detalle'}
-                                                        className={`flex items-center justify-center w-7 h-7 rounded-lg transition-colors ${isOpen ? 'text-primary bg-primary/10' : 'text-muted-foreground/50 hover:text-primary hover:bg-primary/5'}`}
-                                                    >
-                                                        {isOpen
-                                                            ? <ChevronUp size={16} strokeWidth={2.5} />
-                                                            : <ChevronDown size={16} strokeWidth={2.5} />}
-                                                    </button>
-                                                </TableCell>
-                                                {COLUMNS.map((column, index) => (
-                                                    <TableCell
-                                                        key={column.key}
-                                                        className={`py-4 text-[13px] text-foreground/90 ${index === 0 ? 'font-bold' : ''}`}
-                                                    >
-                                                        {testCase[column.key]}
-                                                    </TableCell>
-                                                ))}
-                                            </TableRow>
-                                            {isOpen && (
-                                                <TableRow className="hover:bg-transparent border-none">
-                                                    <TableCell colSpan={COLUMNS.length + 1} className="p-0">
-                                                        <TestCaseExpandedDetail testCase={testCase} />
-                                                    </TableCell>
-                                                </TableRow>
-                                            )}
-                                        </Fragment>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-
-                        {visibleCases.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-16 text-center bg-muted/5">
-                                <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-muted/20 text-muted-foreground mb-3">
-                                    <SearchX className="h-7 w-7" />
-                                </div>
-                                <h3 className="text-sm font-bold text-foreground">
-                                    No hay casos de prueba para este Epic
-                                </h3>
-                                <Button
-                                    variant="outline"
-                                    className="mt-4 rounded-xl text-xs font-bold"
-                                    onClick={() => setEpicFilter(null)}
-                                >
-                                    Quitar filtro
-                                </Button>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </section>
+                    <Card className="border-border/40 overflow-hidden bg-card shadow-lg shadow-black/5 rounded-2xl p-0">
+                        <TestCaseTable />
+                    </Card>
+                </section>
+            )}
         </div>
     );
 }

@@ -58,7 +58,8 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
         if (isOpen) {
             setContent(note?.content || '');
             setLink(noteToLink(note));
-            setColor(note?.color || '');
+            // Toda nota lleva color; si no tiene (o es nueva), el primero por defecto.
+            setColor(note?.color || PREDEFINED_COLORS[0].value);
             setIsPinned(note?.is_pinned || false);
         }
     }, [isOpen, note]);
@@ -70,7 +71,7 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
         const noteData = {
             content: content.trim(),
             ...linkToColumns(link),
-            color: color || null,
+            color: color || PREDEFINED_COLORS[0].value,
             is_pinned: isPinned
         };
 
@@ -124,13 +125,6 @@ export function NoteForm({ isOpen, onClose, note, onSave }) {
                                 Color de Tarjeta
                             </label>
                             <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setColor('')}
-                                    className={`w-7 h-7 rounded-full border-2 transition-all flex items-center justify-center ${!color ? 'border-primary' : 'border-transparent bg-muted'}`}
-                                    title="Sin color"
-                                >
-                                    {!color && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
-                                </button>
                                 {PREDEFINED_COLORS.map(c => (
                                     <button
                                         key={c.value}

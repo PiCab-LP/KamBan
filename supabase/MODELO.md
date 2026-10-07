@@ -16,7 +16,7 @@ epics ──┬── features ──┬── bugs ──┬── comments (bu
         │              └── notes    (feature_id, SET NULL)
         └── notes (epic_id, SET NULL)
 
-profiles (1 por usuario de auth.users)  ──<  created_by (epics/features/bugs)
+profiles (1 por usuario de auth.users)  ──<  created_by (epics/features/bugs/notes)
                                              assigned_qa_id (features/bugs) · assigned_dev_id (bugs)
 ```
 
@@ -148,8 +148,9 @@ Notas del equipo. Pueden ir sueltas (globales) o ligadas a **un** Epic, feature 
 | `content` | text | sí | 1–10000 caracteres |
 | `color` | text | opcional | Hex tipo `#AABBCC` |
 | `is_pinned` | boolean | default `false` | Nota fijada arriba |
+| `created_by` | uuid | default `auth.uid()` | → `profiles` (autor; solo QA crea notas) |
 | `created_at` | timestamptz | default `now()` | — |
-| `updated_at` | timestamptz | default `now()` | Trigger |
+| `updated_at` | timestamptz | default `now()` | Trigger (se actualiza en cada edición) |
 
 **Estados que acepta:** ninguno enumerado. Solo `is_pinned` (booleano) y `color` (texto hex).
 

@@ -27,6 +27,7 @@ pegando cada archivo completo y en este orden:
 | 4 | `migrations/20261006120000_completion_guard.sql` | Triggers: no completar con trabajo pendiente. |
 | 5 | `migrations/20261006130000_auth_roles.sql` | **Auth real:** `profiles`, roles, asignación de bugs y RLS estricto. Reemplaza lo permisivo del paso 3. |
 | 6 | `migrations/20261007120000_creators_and_assignment.sql` | `created_by` en epics/features/bugs y `assigned_qa_id` en features. Renombra `bugs.creator_id` → `created_by`. |
+| 7 | `migrations/20261007130000_notes_created_by.sql` | `created_by` en notes (autor de la nota). |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.

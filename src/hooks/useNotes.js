@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
 
 const NOTE_FIELDS = `
-    id, epic_id, feature_id, bug_id, content, created_at, updated_at, is_pinned, color,
+    id, epic_id, feature_id, bug_id, content, created_at, updated_at, is_pinned, color, created_by,
     epics ( name ),
     features ( name ),
     bugs ( title )

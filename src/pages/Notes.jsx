@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNotes } from '@/hooks/useNotes';
+import { useProfiles } from '@/hooks/useProfiles';
 import { NoteCard } from '@/components/notes/NoteCard';
 import { NoteForm } from '@/components/notes/NoteForm';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 export default function Notes() {
     const { notes, loading, createNote, updateNote, deleteNote, togglePin } = useNotes();
+    const { profilesById } = useProfiles();
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingNote, setEditingNote] = useState(null);
@@ -73,6 +75,7 @@ export default function Notes() {
                         <NoteCard
                             key={note.id}
                             note={note}
+                            profilesById={profilesById}
                             onEdit={handleOpenEdit}
                             onDelete={(id) => setNoteToDelete(id)}
                             onTogglePin={togglePin}

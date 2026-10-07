@@ -102,6 +102,12 @@ Es el trabajo activo. La pantalla ([src/pages/TestCases.jsx](src/pages/TestCases
 tiene la estructura lista pero **no está conectada a la base de datos**: no hay tabla
 `test_cases` ni migración para ella.
 
+**La pantalla es un drill-down Epic → Feature → tabla.** Se navega: los Epics se ven como
+carpetas, al entrar a uno salen sus Features, y al entrar a un Feature aparece la tabla de casos
+(hoy la maqueta con la fila de ejemplo), con breadcrumb para subir. La tabla vive en
+[src/components/testcases/TestCaseTable.jsx](src/components/testcases/TestCaseTable.jsx). Esto fija
+que **cada caso colgará de un Feature (`feature_id`)** cuando se cree la tabla real.
+
 Los campos ya acordados, repartidos así:
 
 **Columnas de la tabla** (11): ID Caso · Suite · Aplicación · Módulo/Pantalla · Título ·
@@ -120,14 +126,12 @@ Hasta entonces no se puede escribir la migración, porque los `CHECK` necesitan 
 
 ### 2. "Compañía" apunta a una tabla que ya no existe — decidido: texto libre ✅
 
-**Decidido (octubre de 2026):** "Compañía" será una columna `text` libre, y los casos de prueba serán
-independientes de la jerarquía (sin FK a Epic/Feature). Lo que sigue abierto es el punto 1.
+**Decidido (octubre de 2026):** "Compañía" será una columna `text` libre.
 
-> **Matiz posterior:** la pantalla ya tiene un filtro por Epic (`components/testcases/EpicFilter.jsx`,
-> alimentado por `useEpics`). Para que filtre de verdad, `test_cases` necesita un **`epic_id` opcional**
-> (`references epics(id) on delete set null`, como las notas). Eso matiza lo de "independientes": no
-> hay FK a Feature, pero sí un vínculo suave a Epic. Hoy el filtro opera sobre `epic_id` de la fila de
-> ejemplo (que es `null`), así que al elegir un Epic sale el estado vacío.
+> **Actualización:** la jerarquía de los casos cambió. Ahora la pantalla navega Epic → Feature →
+> tabla, así que cada caso colgará de un **Feature** (`test_cases.feature_id references features(id)`,
+> probablemente `on delete cascade`). Queda descartada la idea anterior de "independiente con `epic_id`
+> opcional" y el filtro por Epic (`EpicFilter`) se eliminó. "Compañía" sigue siendo texto libre.
 
 Antes estaba sin resolver porque `companies` se borró en la migración; se descartaron la tabla
 nueva de compañías y apuntar a los Epics.
@@ -302,7 +306,8 @@ cada píxel cuenta.
 | Etiqueta y acciones de las filas del árbol | `src/components/backlog/TreeRow.jsx` |
 | Fecha de creación de features y bugs | `CreatedAtField.jsx` + `dateInputToTimestamp` en `src/lib/format.js` |
 | El tablero, su drag y la clasificación de bugs | `src/pages/BugBoard.jsx` + `src/lib/position.js` + `BugFormSheet` (modo `board`) |
-| Casos de Prueba | `src/pages/TestCases.jsx` (`COLUMNS` y `DETAIL_FIELDS` al inicio) |
+| Casos de Prueba (navegación) | `src/pages/TestCases.jsx` (drill-down Epic → Feature → tabla) |
+| La tabla de casos y sus campos | `src/components/testcases/TestCaseTable.jsx` (`COLUMNS`, `DETAIL_FIELDS`, `EXAMPLE_ROW`) |
 | Sesión y rol del usuario | `src/context/AuthContext.jsx` + `src/components/auth/ProtectedRoute.jsx` |
 | Qué puede cada rol | `src/lib/domain.js` (`ROLES`, `canManageBacklog`) + la migración `20261006130000_auth_roles.sql` |
 | La pantalla del Dev | `src/pages/MyBugs.jsx` + `setDevStatus` en `src/hooks/useBugs.js` |
