@@ -4,6 +4,7 @@ import { ImagePlus, X, Loader2, Paperclip, Download, ChevronLeft, ChevronRight }
 import { useBugImages } from '@/hooks/useBugImages';
 import { useToast } from '@/context/ToastContext';
 import { ACCEPT_ATTR, MAX_IMAGES, prepareFile } from '@/lib/images';
+import { ConfirmDeleteModal } from '@/components/ui/ConfirmDeleteModal';
 
 /**
  * Zona de imágenes de un bug. Dos modos según `bugId`:
@@ -28,6 +29,8 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
     const [busy, setBusy] = useState(false);
     const [dragOver, setDragOver] = useState(false);
     const [lightboxIdx, setLightboxIdx] = useState(null);
+    const [confirmImg, setConfirmImg] = useState(null); // imagen existente por confirmar su borrado
+    const [deletingImg, setDeletingImg] = useState(false);
 
     const total = images.length + pending.length;
     const full = total >= MAX_IMAGES;
@@ -138,16 +141,26 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
         });
     };
 
-    const removeExisting = async (img) => {
-        setBusy(true);
-        const res = await removeImage(img);
-        if (res.success) setImages((prev) => prev.filter((i) => i.id !== img.id));
-        setBusy(false);
+    // Borrar una imagen YA subida es irreversible (se va de Cloudinary): se confirma.
+    const handleConfirmRemove = async () => {
+        if (!confirmImg) return;
+        setDeletingImg(true);
+        const res = await removeImage(confirmImg);
+        setDeletingImg(false);
+        if (res.success) setImages((prev) => prev.filter((i) => i.id !== confirmImg.id));
+        setConfirmImg(null);
     };
 
     const tiles = [
-        ...images.map((img) => ({ key: img.id, src: img.thumbUrl, fullSrc: img.fullUrl, onRemove: () => removeExisting(img) })),
-        ...pending.map((p, idx) => ({ key: `p-${idx}`, src: p.url, fullSrc: p.url, onRemove: () => removePending(idx) })),
+        ...images.map((img) => ({
+            key: img.id, src: img.thumbUrl, fullSrc: img.fullUrl, downloadUrl: img.downloadUrl,
+            onRemove: () => setConfirmImg(img),
+        })),
+        // Las staged (aún sin subir) se quitan directo: no hay nada que borrar en Cloudinary.
+        ...pending.map((p, idx) => ({
+            key: `p-${idx}`, src: p.url, fullSrc: p.url, downloadUrl: p.url, downloadName: p.name,
+            onRemove: () => removePending(idx),
+        })),
     ];
 
     const closeLightbox = () => setLightboxIdx(null);
@@ -253,6 +266,15 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
                     onJump={setLightboxIdx}
                 />
             )}
+
+            <ConfirmDeleteModal
+                isOpen={Boolean(confirmImg)}
+                onClose={() => { if (!deletingImg) setConfirmImg(null); }}
+                onConfirm={handleConfirmRemove}
+                isLoading={deletingImg}
+                title="¿Eliminar esta imagen?"
+                description="Se quitará del bug y se borrará de Cloudinary. No se puede deshacer."
+            />
         </div>
     );
 }
@@ -294,10 +316,8 @@ function Lightbox({ tiles, index, onClose, onStep, onJump }) {
                 <span className="text-xs font-bold tracking-wide tabular-nums">{index + 1} / {count}</span>
                 <div className="flex items-center gap-1.5">
                     <a
-                        href={tile.fullSrc}
-                        download
-                        target="_blank"
-                        rel="noreferrer"
+                        href={tile.downloadUrl}
+                        download={tile.downloadName || true}
                         title="Descargar"
                         className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                     >

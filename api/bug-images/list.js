@@ -6,6 +6,10 @@ import { signedUrl } from '../_lib/cloudinary.js';
 
 const THUMB = 'c_fill,w_400,h_300,q_auto,f_auto';
 const FULL = 'q_auto,f_auto';
+// fl_attachment hace que Cloudinary sirva el archivo con Content-Disposition: attachment,
+// así el navegador lo DESCARGA en vez de abrirlo. Sin esto, el atributo download de un <a>
+// se ignora por ser otro origen y solo navega a la imagen.
+const DOWNLOAD = 'fl_attachment';
 
 export default async function handler(req, res) {
   try {
@@ -34,6 +38,7 @@ export default async function handler(req, res) {
       createdAt: img.created_at,
       thumbUrl: signedUrl(img.public_id, THUMB),
       fullUrl: signedUrl(img.public_id, FULL),
+      downloadUrl: signedUrl(img.public_id, DOWNLOAD),
     }));
 
     res.status(200).json({ images });
