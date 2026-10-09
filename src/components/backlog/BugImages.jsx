@@ -280,7 +280,10 @@ function Lightbox({ tiles, index, onClose, onStep, onJump }) {
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[10000] flex flex-col bg-black/85 backdrop-blur-sm animate-kanban-fade-in"
+            // pointer-events-auto es imprescindible: la hoja (Radix Dialog modal) pone
+            // pointer-events:none en el body, y este portal lo heredaría, dejando pasar
+            // los clics a la hoja de atrás (p. ej. al select de Dev) en vez de a las flechas.
+            className="fixed inset-0 z-[10000] flex flex-col bg-black/85 backdrop-blur-sm animate-kanban-fade-in pointer-events-auto"
             onClick={onClose}
         >
             {/* Barra superior: contador + acciones */}
