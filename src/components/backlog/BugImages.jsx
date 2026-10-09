@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ImagePlus, X, Loader2, Paperclip } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { ImagePlus, X, Loader2, Paperclip, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useBugImages } from '@/hooks/useBugImages';
 import { useToast } from '@/context/ToastContext';
 import { ACCEPT_ATTR, MAX_IMAGES, prepareFile } from '@/lib/images';
@@ -26,7 +27,7 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
     const [loading, setLoading] = useState(!isCreate);
     const [busy, setBusy] = useState(false);
     const [dragOver, setDragOver] = useState(false);
-    const [lightbox, setLightbox] = useState(null);
+    const [lightboxIdx, setLightboxIdx] = useState(null);
 
     const total = images.length + pending.length;
     const full = total >= MAX_IMAGES;
@@ -149,6 +150,10 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
         ...pending.map((p, idx) => ({ key: `p-${idx}`, src: p.url, fullSrc: p.url, onRemove: () => removePending(idx) })),
     ];
 
+    const closeLightbox = () => setLightboxIdx(null);
+    const stepLightbox = (delta) =>
+        setLightboxIdx((i) => (i === null ? i : (i + delta + tiles.length) % tiles.length));
+
     return (
         <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -210,13 +215,13 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
                 </div>
             ) : tiles.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
-                    {tiles.map((tile) => (
+                    {tiles.map((tile, i) => (
                         <div key={tile.key} className="relative group aspect-[4/3] rounded-lg overflow-hidden border border-border/40 bg-muted/30">
                             <img
                                 src={tile.src}
                                 alt=""
                                 loading="lazy"
-                                onClick={() => setLightbox(tile.fullSrc)}
+                                onClick={() => setLightboxIdx(i)}
                                 className="w-full h-full object-cover cursor-zoom-in"
                             />
                             {canEdit && (
@@ -239,21 +244,134 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
                 )
             )}
 
-            {lightbox && (
-                <div
-                    className="fixed inset-0 z-[10000] bg-black/80 flex items-center justify-center p-6 cursor-zoom-out"
-                    onClick={() => setLightbox(null)}
-                >
-                    <img src={lightbox} alt="" className="max-w-full max-h-full rounded-lg shadow-2xl" />
+            {lightboxIdx !== null && tiles[lightboxIdx] && (
+                <Lightbox
+                    tiles={tiles}
+                    index={lightboxIdx}
+                    onClose={closeLightbox}
+                    onStep={stepLightbox}
+                    onJump={setLightboxIdx}
+                />
+            )}
+        </div>
+    );
+}
+
+/**
+ * Visor de imágenes estilo Airtable: la imagen vive en un marco con su propio
+ * espacio (mínimos para que una imagen pequeña no se vea perdida) y **nunca se
+ * escala hacia arriba** (máximos por viewport + tamaño natural), así no pierde
+ * calidad. Navegación con flechas/teclado y tira de miniaturas. Se renderiza en
+ * un portal para cubrir toda la ventana sin importar dónde esté montado.
+ */
+function Lightbox({ tiles, index, onClose, onStep, onJump }) {
+    useEffect(() => {
+        const onKey = (e) => {
+            if (e.key === 'Escape') onClose();
+            else if (e.key === 'ArrowRight') onStep(1);
+            else if (e.key === 'ArrowLeft') onStep(-1);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onClose, onStep]);
+
+    const tile = tiles[index];
+    const count = tiles.length;
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[10000] flex flex-col bg-black/85 backdrop-blur-sm animate-kanban-fade-in"
+            onClick={onClose}
+        >
+            {/* Barra superior: contador + acciones */}
+            <div
+                className="flex items-center justify-between px-5 h-14 shrink-0 text-white/90"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <span className="text-xs font-bold tracking-wide tabular-nums">{index + 1} / {count}</span>
+                <div className="flex items-center gap-1.5">
+                    <a
+                        href={tile.fullSrc}
+                        download
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Descargar"
+                        className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                    >
+                        <Download size={17} strokeWidth={2.2} />
+                    </a>
                     <button
                         type="button"
-                        onClick={() => setLightbox(null)}
-                        className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-white/10 text-white flex items-center justify-center hover:bg-white/20"
+                        onClick={onClose}
+                        title="Cerrar (Esc)"
+                        className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
                     >
                         <X size={18} strokeWidth={2.5} />
                     </button>
                 </div>
+            </div>
+
+            {/* Escenario: la imagen en su marco, centrada */}
+            <div
+                className="relative flex-1 min-h-0 flex items-center justify-center px-4 sm:px-16"
+                onClick={onClose}
+            >
+                {count > 1 && (
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onStep(-1); }}
+                        title="Anterior (←)"
+                        className="absolute left-3 sm:left-5 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+                    >
+                        <ChevronLeft size={22} strokeWidth={2.5} />
+                    </button>
+                )}
+
+                <div
+                    className="flex items-center justify-center rounded-2xl bg-white/[0.06] border border-white/10 p-3 sm:p-4 min-w-[300px] min-h-[220px] max-w-full max-h-full"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    <img
+                        src={tile.fullSrc}
+                        alt=""
+                        className="object-contain rounded-lg"
+                        style={{ maxHeight: '72vh', maxWidth: 'min(88vw, 1000px)' }}
+                    />
+                </div>
+
+                {count > 1 && (
+                    <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); onStep(1); }}
+                        title="Siguiente (→)"
+                        className="absolute right-3 sm:right-5 w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 transition-colors"
+                    >
+                        <ChevronRight size={22} strokeWidth={2.5} />
+                    </button>
+                )}
+            </div>
+
+            {/* Tira de miniaturas */}
+            {count > 1 && (
+                <div
+                    className="shrink-0 flex items-center justify-center gap-2 px-4 py-4 overflow-x-auto custom-scrollbar"
+                    onClick={(e) => e.stopPropagation()}
+                >
+                    {tiles.map((t, i) => (
+                        <button
+                            key={t.key}
+                            type="button"
+                            onClick={() => onJump(i)}
+                            className={`h-14 w-14 shrink-0 rounded-lg overflow-hidden border-2 transition-all ${
+                                i === index ? 'border-primary' : 'border-transparent opacity-50 hover:opacity-100'
+                            }`}
+                        >
+                            <img src={t.src} alt="" className="w-full h-full object-cover" />
+                        </button>
+                    ))}
+                </div>
             )}
-        </div>
+        </div>,
+        document.body,
     );
 }
