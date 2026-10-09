@@ -1,7 +1,7 @@
 // GET /api/bug-images/list?bugId=...   (cualquier usuario autenticado)
 // Devuelve las imágenes del bug que el usuario PUEDE ver (el RLS de bug_images filtra:
 // qa/viewer todo, dev solo sus asignados) con URLs de visualización ya firmadas.
-import { getAuthContext, HttpError, sendError } from '../_lib/auth.js';
+import { getAuthContext, HttpError, sendError, assertUuid } from '../_lib/auth.js';
 import { signedUrl } from '../_lib/cloudinary.js';
 
 const THUMB = 'c_fill,w_400,h_300,q_auto,f_auto';
@@ -18,9 +18,7 @@ export default async function handler(req, res) {
     const ctx = await getAuthContext(req); // basta con estar autenticado; el RLS hace el resto
 
     const bugId = req.query.bugId;
-    if (!bugId || typeof bugId !== 'string') {
-      throw new HttpError(400, 'Falta el identificador del bug.');
-    }
+    assertUuid(bugId, 'identificador del bug');
 
     const { data, error } = await ctx.supabase
       .from('bug_images')

@@ -232,6 +232,17 @@ del botón de login solo evita el doble-clic; **no es protección** (un script l
 No hay bloqueo de cuenta por intentos fallidos. Para endurecerlo: activar **CAPTCHA** en Auth (hCaptcha/
 Turnstile), ajustar los límites en el dashboard, o habilitar MFA / leaked-password protection.
 
+**Inyección / XSS en los inputs.** Los textos que escribe el usuario (títulos, descripciones,
+comentarios, notas, nombres) se renderizan como **texto** en JSX, que React **escapa** automáticamente:
+no se interpretan como HTML ni ejecutan scripts. No se usa `dangerouslySetInnerHTML`, `innerHTML`, `eval`
+ni `document.write` en ningún lado. Las consultas van por el query builder de `supabase-js` (PostgREST
+parametrizado, con `.eq()` sobre ids/enums), así que **no hay inyección SQL**. El `?bug=<id>` de la URL
+se valida contra los bugs cargados y se escapa con `CSS.escape` antes de usarse en un selector. En el
+backend, los `bugId` se validan como UUID y el borrado en Cloudinary se confina a `qanban_bugs/`. Las
+imágenes se restringen a JPG/PNG/WebP/GIF (sin SVG) y se muestran siempre en `<img>` (no en línea), así
+que un archivo subido no puede ejecutar scripts en la app. Conviene repetir el límite de formatos y
+tamaño en el upload preset de Cloudinary como segunda barrera.
+
 ## Imágenes de bugs (Cloudinary)
 
 Un bug puede llevar imágenes de evidencia (hasta **10**, máx. **5 MB** cada una; JPG, PNG, WebP, GIF).
@@ -245,14 +256,20 @@ descarga. Eliminar una imagen ya subida pide **confirmación**. Las imágenes **
 `authenticated` y exige una **URL firmada** para verla. Esa firma usa el **API secret**, que no puede
 ir en el bundle (`VITE_*` es público). Por eso hay funciones serverless en `api/bug-images/`:
 
-- `sign-upload` (POST, solo QA): firma la subida. El `public_id` (`qanban_bugs/<bug_id>/<ts>-<rand>`) y
-  el `type=authenticated` se fijan en el servidor. El navegador sube el archivo **directo** a Cloudinary.
+- `sign-upload` (POST, solo QA): firma la subida. El `public_id` (`qanban_bugs/<bug_id>/<ts>-<rand>`),
+  el `type=authenticated` y el `asset_folder` (ubica el asset en la carpeta `qanban_bugs/<bug_id>/` en
+  cuentas con **carpetas dinámicas**, donde las barras del `public_id` no crean carpetas) se fijan en el
+  servidor. El navegador sube el archivo **directo** a Cloudinary. El `bugId` se valida como UUID.
 - `list` (GET, autenticado): devuelve las imágenes del bug con **URLs firmadas** (miniatura, tamaño
   completo, y descarga con `fl_attachment` para que el navegador baje el archivo en vez de abrirlo).
   Consulta con el **token del usuario**, así el RLS de `bug_images` decide qué ve cada rol (no se duplica
   la autorización).
 - `delete` (POST, solo QA): borra una imagen (`{ publicId }`) o, al borrar un bug, toda su subcarpeta
-  por prefijo (`{ bugId }`).
+  por prefijo (`{ bugId }`). El borrado está **confinado a `qanban_bugs/`**: nunca toca assets de otros
+  proyectos de la misma cuenta de Cloudinary, aunque quien lo pida sea QA.
+
+En el cliente, al abrir el detalle de un bug las imágenes a tamaño completo se **precargan en segundo
+plano** (tiempo idle) para que el visor sea instantáneo.
 
 El cliente comprime en el navegador (`browser-image-compression`) antes de subir y valida tipo/peso;
 Cloudinary debe repetir esos límites como segunda barrera.

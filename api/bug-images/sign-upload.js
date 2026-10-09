@@ -3,7 +3,7 @@
 // (los bytes no pasan por esta función). El public_id y el type=authenticated se
 // fijan aquí en el servidor: el cliente no puede elegir la ruta ni hacer el asset
 // público.
-import { getAuthContext, requireRole, HttpError, sendError } from '../_lib/auth.js';
+import { getAuthContext, requireRole, HttpError, sendError, assertUuid } from '../_lib/auth.js';
 import { cloudinary, API_SECRET, API_KEY, CLOUD_NAME, BUGS_FOLDER } from '../_lib/cloudinary.js';
 
 export default async function handler(req, res) {
@@ -14,9 +14,7 @@ export default async function handler(req, res) {
     requireRole(ctx, 'qa');
 
     const { bugId } = req.body || {};
-    if (!bugId || typeof bugId !== 'string') {
-      throw new HttpError(400, 'Falta el identificador del bug.');
-    }
+    assertUuid(bugId, 'identificador del bug');
 
     // El bug debe existir y ser visible para este QA (RLS).
     const { data: bug, error } = await ctx.supabase

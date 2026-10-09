@@ -15,6 +15,16 @@ export class HttpError extends Error {
   }
 }
 
+// Valida que un identificador sea un UUID antes de usarlo en rutas/consultas, para
+// que ningún valor raro se cuele en el public_id de Cloudinary ni en las queries.
+export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function assertUuid(value, label = 'identificador') {
+  if (typeof value !== 'string' || !UUID_RE.test(value)) {
+    throw new HttpError(400, `El ${label} no es válido.`);
+  }
+}
+
 /**
  * Verifica el token, devuelve { supabase (como el usuario), user, role }.
  * Lanza HttpError(401) si el token falta o es inválido.

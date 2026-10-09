@@ -235,11 +235,16 @@ export default function BugBoard() {
   useEffect(() => {
     if (!targetBugId || loading) return;
 
-    // `items` se llena un render después de `bugs`: hasta entonces la tarjeta no existe.
+    // Id desconocido o manipulado en la URL: no tocamos el DOM, solo limpiamos el parámetro.
     const exists = bugs.some((b) => b.id === targetBugId);
-    if (exists && !items.some((b) => b.id === targetBugId)) return;
+    if (!exists) { setSearchParams({}, { replace: true }); return; }
 
-    const card = document.querySelector(`[data-bug-id="${targetBugId}"]`);
+    // `items` se llena un render después de `bugs`: hasta entonces la tarjeta no existe.
+    if (!items.some((b) => b.id === targetBugId)) return;
+
+    // CSS.escape: aunque targetBugId ya coincide con un id real (un uuid), evita que un
+    // valor con caracteres especiales rompa el selector.
+    const card = document.querySelector(`[data-bug-id="${CSS.escape(targetBugId)}"]`);
     if (card) {
       card.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
       setHighlightedId(targetBugId);

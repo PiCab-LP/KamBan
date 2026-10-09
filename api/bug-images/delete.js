@@ -4,7 +4,7 @@
 //                    por prefijo. Las filas de bug_images caen solas por CASCADE cuando
 //                    después se borra el bug (ver src/hooks/useBugs.js deleteBug), por eso
 //                    aquí solo se tocan los archivos de Cloudinary.
-import { getAuthContext, requireRole, HttpError, sendError } from '../_lib/auth.js';
+import { getAuthContext, requireRole, HttpError, sendError, assertUuid } from '../_lib/auth.js';
 import { cloudinary, BUGS_FOLDER } from '../_lib/cloudinary.js';
 
 export default async function handler(req, res) {
@@ -17,6 +17,7 @@ export default async function handler(req, res) {
     const { publicId, bugId } = req.body || {};
 
     if (bugId) {
+      assertUuid(bugId, 'identificador del bug');
       const folder = `${BUGS_FOLDER}/${bugId}`;
       await cloudinary.api.delete_resources_by_prefix(`${folder}/`, {
         type: 'authenticated',
@@ -33,6 +34,11 @@ export default async function handler(req, res) {
     }
 
     if (publicId && typeof publicId === 'string') {
+      // Confinar el borrado a NUESTRA carpeta: nunca tocar assets de otros proyectos de
+      // la misma cuenta de Cloudinary, aunque el que pide sea QA.
+      if (!publicId.startsWith(`${BUGS_FOLDER}/`)) {
+        throw new HttpError(400, 'La imagen no pertenece a este proyecto.');
+      }
       const result = await cloudinary.uploader.destroy(publicId, {
         type: 'authenticated',
         resource_type: 'image',

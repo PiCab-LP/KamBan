@@ -87,6 +87,15 @@ estados nuevos del tablero— está **aplicado** en el proyecto remoto (ver
     una imagen ya subida pide confirmación (`ConfirmDeleteModal`); las aún sin subir se quitan directo.
     El visor se renderiza por portal con **`pointer-events-auto`**: sin eso, la hoja (Dialog modal de
     Radix) pone `pointer-events:none` en el `body` y los clics se iban a la hoja de atrás.
+  - **Carpetas y rendimiento**: la subida manda `asset_folder = qanban_bugs/<bug_id>` — en cuentas con
+    **carpetas dinámicas** las barras del `public_id` no crean carpetas, así que sin esto todo caía en la
+    raíz (Home). El `public_id` conserva la ruta para que la limpieza por prefijo siga sirviendo. Al abrir
+    el card, las full-size se **precargan en segundo plano** (idle) y el visor también precarga vecinas.
+  - **Endurecimiento de seguridad** (revisión de inyección): el borrado en Cloudinary se **confina a
+    `qanban_bugs/`** (un QA no puede borrar assets de otros proyectos de la cuenta), los `bugId` se validan
+    como **UUID** en el backend, y el `?bug=<id>` de la URL se valida y se escapa con `CSS.escape` antes de
+    usarse en un selector. El resto del sistema ya era seguro: React escapa el texto (sin
+    `dangerouslySetInnerHTML`/`innerHTML`/`eval`), y las queries van parametrizadas por `supabase-js`.
   - `createBug` ahora devuelve el `id` (`.select('id').single()`) para asociar las imágenes al crear;
     `deleteBug` limpia Cloudinary por prefijo **antes** del delete (cero huérfanos).
   - **Imágenes privadas**: assets `authenticated`; sin URL firmada, Cloudinary responde 401. La firma la
