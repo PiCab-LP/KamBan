@@ -49,6 +49,21 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
         return () => { active = false; };
     }, [bugId, isCreate, listImages]);
 
+    // Precarga en segundo plano (en tiempo "idle") las imágenes a tamaño completo en
+    // cuanto el card tiene la lista, sin bloquear la UI ni la carga de las miniaturas.
+    // Así el visor es instantáneo desde la PRIMERA imagen que se abra.
+    useEffect(() => {
+        if (!images.length) return undefined;
+        const ric = window.requestIdleCallback;
+        const schedule = ric ? ric.bind(window) : (cb) => setTimeout(cb, 300);
+        const cancel = ric ? window.cancelIdleCallback.bind(window) : clearTimeout;
+        const handles = images.map((img) => schedule(() => {
+            const pre = new Image();
+            pre.src = img.fullUrl;
+        }));
+        return () => handles.forEach((h) => cancel(h));
+    }, [images]);
+
     // Avisa al padre de los archivos staged (solo en crear).
     useEffect(() => {
         if (isCreate) onPendingChange?.(pending.map((p) => p.file));
@@ -299,6 +314,16 @@ function Lightbox({ tiles, index, onClose, onStep, onJump }) {
 
     const tile = tiles[index];
     const count = tiles.length;
+
+    // Precarga la imagen siguiente y la anterior (a tamaño completo) para que al
+    // navegar ya estén en caché y el cambio sea instantáneo, sin esperar la descarga.
+    useEffect(() => {
+        if (count <= 1) return;
+        [(index + 1) % count, (index - 1 + count) % count].forEach((i) => {
+            const img = new Image();
+            img.src = tiles[i].fullSrc;
+        });
+    }, [index, count, tiles]);
 
     return createPortal(
         <div
