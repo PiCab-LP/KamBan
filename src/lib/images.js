@@ -86,6 +86,7 @@ export async function uploadToCloudinary(file, sig) {
   form.append('signature', sig.signature);
   form.append('public_id', sig.publicId);
   form.append('type', sig.type);
+  if (sig.assetFolder) form.append('asset_folder', sig.assetFolder);
 
   const res = await fetch(`https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`, {
     method: 'POST',

@@ -55,9 +55,10 @@ estados nuevos del tablero— está **aplicado** en el proyecto remoto (ver
 - **Notas**: autor, fechas de creado/editado con hora, vínculo a Epic/Feature/Bug, colores, fijar.
 - **Regla de completado**: un Feature o Epic no pasa a "Completado" con bugs abiertos o, en el Epic,
   features sin completar (triggers + aviso en el frontend).
-- **Imágenes de bugs (Cloudinary)**: evidencia privada por bug (hasta 10, 5 MB c/u; drag & drop + click,
-  compresión en el navegador). QA sube/edita; Dev/Viewer ven. Entrega firmada vía backend serverless
-  (`api/`). Ver [README](README.md#imágenes-de-bugs-cloudinary).
+- **Imágenes de bugs (Cloudinary)**: evidencia privada por bug (hasta 10, 5 MB c/u; drag & drop, click
+  o **pegar del portapapeles**, con compresión en el navegador). QA sube/edita (con confirmación al
+  borrar); Dev/Viewer ven en un **visor** con navegación, miniaturas y descarga. Entrega firmada vía
+  backend serverless (`api/`). Ver [README](README.md#imágenes-de-bugs-cloudinary).
 - Modo claro/oscuro, instantáneo. Responsive (desktop-first, hasta laptops pequeñas).
 
 ### Cambios del 9 de octubre de 2026
@@ -79,6 +80,13 @@ estados nuevos del tablero— está **aplicado** en el proyecto remoto (ver
     `BugImages` (reemplazó al mockup `BugImagesPlaceholder`, eliminado). Montado en `BugFormSheet`
     (backlog crea; board edita QA / ve viewer) y galería de solo lectura en `MyBugs`. Indicador de clip
     con conteo en la tarjeta del tablero (`bug_images(count)` embebido en el select de `useBugs`).
+  - **Subida y visor**: se puede **pegar del portapapeles** (Ctrl/Cmd+V, solo imágenes). El visor es
+    estilo Airtable (la imagen en su marco, **sin escalar hacia arriba** para no perder calidad; flechas,
+    teclado ←/→/Esc, miniaturas y descarga). La descarga usa `fl_attachment` (el backend devuelve una
+    `downloadUrl` firmada) porque el atributo `download` de un `<a>` se ignora entre orígenes. Eliminar
+    una imagen ya subida pide confirmación (`ConfirmDeleteModal`); las aún sin subir se quitan directo.
+    El visor se renderiza por portal con **`pointer-events-auto`**: sin eso, la hoja (Dialog modal de
+    Radix) pone `pointer-events:none` en el `body` y los clics se iban a la hoja de atrás.
   - `createBug` ahora devuelve el `id` (`.select('id').single()`) para asociar las imágenes al crear;
     `deleteBug` limpia Cloudinary por prefijo **antes** del delete (cero huérfanos).
   - **Imágenes privadas**: assets `authenticated`; sin URL firmada, Cloudinary responde 401. La firma la
@@ -282,6 +290,14 @@ resolvería.
 ## Decisiones y por qué
 
 Esto es lo que no se deduce leyendo el código.
+
+**Rate limit del login: lo pone Supabase, no el código.** No hay throttle propio en `Login.jsx`; el
+login llama a `supabase.auth.signInWithPassword` y el límite lo aplica **Supabase Auth (GoTrue)** por IP
+en `/auth/v1/token` (configurable en Dashboard → *Authentication → Rate Limits*). El `disabled` del botón
+solo evita el doble-clic — **no es protección** (un script le pega directo al endpoint, saltándose la UI).
+No hay bloqueo de cuenta por intentos fallidos. Si se quiere endurecer: **CAPTCHA** en Auth (hCaptcha/
+Turnstile), ajustar los límites en el dashboard, o MFA / leaked-password protection. (Pendiente opcional,
+no bloquea nada hoy.)
 
 **Estados manuales, nunca derivados.** El sistema anterior calculaba el estado de la
 compañía desde las fases del checklist, y resultaba impredecible. Ahora Epic, Feature y

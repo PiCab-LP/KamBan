@@ -225,12 +225,21 @@ comodidad encima de eso.
 La anon key sigue en el bundle y es pública, pero ya **no** da acceso: `anon` fue revocado y toda
 política exige un usuario autenticado con el rol adecuado.
 
+**Rate limit del login.** No hay rate limit propio en el código: el login llama a `supabase.auth.
+signInWithPassword` y el límite lo pone **Supabase Auth (GoTrue)** del lado del servidor, por IP, en el
+endpoint `/auth/v1/token` (configurable en Dashboard → *Authentication → Rate Limits*). El `disabled`
+del botón de login solo evita el doble-clic; **no es protección** (un script le pega directo al endpoint).
+No hay bloqueo de cuenta por intentos fallidos. Para endurecerlo: activar **CAPTCHA** en Auth (hCaptcha/
+Turnstile), ajustar los límites en el dashboard, o habilitar MFA / leaked-password protection.
+
 ## Imágenes de bugs (Cloudinary)
 
 Un bug puede llevar imágenes de evidencia (hasta **10**, máx. **5 MB** cada una; JPG, PNG, WebP, GIF).
-Se suben al **registrar** el bug en el Backlog y se editan (agregar/eliminar) desde el **Tablero**.
-Las ve QA (edita), y Dev y Viewer (solo lectura: Dev en "Mis Bugs", Viewer en el detalle del tablero).
-Las imágenes **no son públicas**.
+Se suben al **registrar** el bug en el Backlog y se editan (agregar/eliminar) desde el **Tablero**. Se
+pueden **arrastrar, elegir con un clic o pegar del portapapeles** (Ctrl/Cmd+V, útil para capturas).
+Las ve QA (edita), y Dev y Viewer (solo lectura: Dev en "Mis Bugs", Viewer en el detalle del tablero);
+al abrirlas se ven en un **visor** (estilo Airtable) con navegación por flechas/teclado, miniaturas y
+descarga. Eliminar una imagen ya subida pide **confirmación**. Las imágenes **no son públicas**.
 
 **Por qué hay un backend.** Para que una imagen no sea pública, Cloudinary la aloja como asset
 `authenticated` y exige una **URL firmada** para verla. Esa firma usa el **API secret**, que no puede
@@ -238,8 +247,10 @@ ir en el bundle (`VITE_*` es público). Por eso hay funciones serverless en `api
 
 - `sign-upload` (POST, solo QA): firma la subida. El `public_id` (`qanban_bugs/<bug_id>/<ts>-<rand>`) y
   el `type=authenticated` se fijan en el servidor. El navegador sube el archivo **directo** a Cloudinary.
-- `list` (GET, autenticado): devuelve las imágenes del bug con URLs firmadas. Consulta con el **token
-  del usuario**, así el RLS de `bug_images` decide qué ve cada rol (no se duplica la autorización).
+- `list` (GET, autenticado): devuelve las imágenes del bug con **URLs firmadas** (miniatura, tamaño
+  completo, y descarga con `fl_attachment` para que el navegador baje el archivo en vez de abrirlo).
+  Consulta con el **token del usuario**, así el RLS de `bug_images` decide qué ve cada rol (no se duplica
+  la autorización).
 - `delete` (POST, solo QA): borra una imagen (`{ publicId }`) o, al borrar un bug, toda su subcarpeta
   por prefijo (`{ bugId }`).
 
@@ -255,6 +266,9 @@ CLOUDINARY_API_SECRET=<tu-api-secret>
 SUPABASE_URL=<misma-url-de-supabase>
 SUPABASE_ANON_KEY=<misma-anon-key>
 ```
+
+> `SUPABASE_URL` y `SUPABASE_ANON_KEY` son **opcionales**: si no las defines, las funciones reutilizan
+> las `VITE_SUPABASE_*` que ya están en Vercel (mismos valores). Las **3 de Cloudinary sí** son obligatorias.
 
 En **Cloudinary**: la carpeta es `qanban_bugs`, y hay que permitir la entrega de assets
 `authenticated` por URL firmada (Settings → Security). El cliente no necesita ninguna var

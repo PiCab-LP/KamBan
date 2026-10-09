@@ -26,11 +26,15 @@ export default async function handler(req, res) {
 
     const timestamp = Math.round(Date.now() / 1000);
     const rand = Math.random().toString(36).slice(2, 10);
-    const publicId = `${BUGS_FOLDER}/${bugId}/${timestamp}-${rand}`;
+    const assetFolder = `${BUGS_FOLDER}/${bugId}`;
+    const publicId = `${assetFolder}/${timestamp}-${rand}`;
 
+    // asset_folder ubica el asset en la carpeta de la Media Library en cuentas con
+    // "dynamic folders" (donde las barras del public_id NO crean carpetas). El public_id
+    // conserva la ruta completa para que la limpieza por prefijo siga funcionando.
     // Firmar EXACTAMENTE los parámetros que el cliente enviará a Cloudinary.
     const signature = cloudinary.utils.api_sign_request(
-      { public_id: publicId, timestamp, type: 'authenticated' },
+      { asset_folder: assetFolder, public_id: publicId, timestamp, type: 'authenticated' },
       API_SECRET,
     );
 
@@ -40,6 +44,7 @@ export default async function handler(req, res) {
       apiKey: API_KEY,
       cloudName: CLOUD_NAME,
       publicId,
+      assetFolder,
       type: 'authenticated',
     });
   } catch (err) {
