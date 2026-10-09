@@ -51,12 +51,11 @@ Ambos valores salen del dashboard de Supabase, en **Project Settings → API**.
 npm run dev
 ```
 
-**El esquema base ya está aplicado** en el proyecto remoto de Supabase; si clonas en otra
-máquina solo necesitas el `.env`. Las migraciones solo se corren al crear un proyecto desde
-cero, en el orden que indica [supabase/README.md](supabase/README.md). **Ojo:** las migraciones
-más recientes (auth y roles, `created_by`, `full_name`, estados nuevos del tablero) pueden no
-estar aplicadas aún en tu proyecto; revisa la tabla de migraciones en
-[supabase/README.md](supabase/README.md) y el [HANDOFF.md](HANDOFF.md).
+**El esquema completo ya está aplicado** en el proyecto remoto de Supabase —incluidas las
+migraciones de auth y roles, `created_by`, `full_name` y los estados nuevos del tablero—; si clonas
+en otra máquina solo necesitas el `.env`. Las migraciones solo se corren al crear un proyecto desde
+cero, en el orden que indica [supabase/README.md](supabase/README.md) (ahí está la tabla completa y
+el bootstrap de cuentas).
 
 ### Scripts
 

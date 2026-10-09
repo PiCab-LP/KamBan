@@ -1,8 +1,9 @@
 # Handoff — QANBAN
 
-Estado al **7 de octubre de 2026**. **Hay bastante trabajo de esta sesión sin commitear** (ver
-[Cambios de esta sesión](#cambios-de-esta-sesión-7-oct-2026)) y **migraciones nuevas por aplicar**
-(ver [Migraciones por aplicar](#migraciones-por-aplicar)). `npm run lint` y `npm run build` pasan.
+Estado al **9 de octubre de 2026**. Todo el trabajo descrito aquí está **commiteado** (árbol
+limpio; último commit `914893b`) y las **migraciones ya están aplicadas** en el proyecto remoto de
+Supabase (ver [Migraciones aplicadas](#migraciones-aplicadas)). Lo que queda son pruebas
+funcionales contra la base y los pendientes de abajo. `npm run lint` y `npm run build` pasan.
 
 Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs con Cloudinary): ver
 [PENDIENTES.md](PENDIENTES.md).
@@ -33,9 +34,9 @@ No se migraron datos.
 
 ### Lo que funciona hoy
 
-El **esquema base** está aplicado en el proyecto remoto, pero las **migraciones de esta sesión
-(auth, roles, `created_by`, `full_name`, estados nuevos) pueden no estar aplicadas** — ver
-[Migraciones por aplicar](#migraciones-por-aplicar). Flujos que existen en el código:
+El esquema completo —incluidas las migraciones de auth, roles, `created_by`, `full_name` y los
+estados nuevos del tablero— está **aplicado** en el proyecto remoto (ver
+[Migraciones aplicadas](#migraciones-aplicadas)). Flujos que existen en el código:
 
 - **Autenticación real** (email + contraseña) con tres roles **qa / dev / viewer** y RLS estricto;
   guard de rutas, login/logout, y gating de la UI por rol. Ver [README](README.md#autenticación-y-roles).
@@ -54,9 +55,9 @@ El **esquema base** está aplicado en el proyecto remoto, pero las **migraciones
   features sin completar (triggers + aviso en el frontend).
 - Modo claro/oscuro, instantáneo. Responsive (desktop-first, hasta laptops pequeñas).
 
-### Cambios de esta sesión (7 oct 2026)
+### Cambios del 6–7 de octubre de 2026
 
-Trabajo hecho en esta sesión, **sin commitear** salvo que se indique. Detalle de cada migración en
+Trabajo del ciclo 6–7 oct, **ya commiteado** (hasta `914893b`). Detalle de cada migración en
 [supabase/README.md](supabase/README.md) y el modelo en [supabase/MODELO.md](supabase/MODELO.md).
 
 - **Autenticación + roles + RLS estricto** (migración `20261006130000`): tabla `profiles`
@@ -129,11 +130,11 @@ Trabajo hecho en esta sesión, **sin commitear** salvo que se indique. Detalle d
 
 ## Pendientes
 
-### Migraciones por aplicar 🔴
+### Migraciones aplicadas ✅
 
-Varias migraciones de esta sesión pueden no estar aplicadas en tu proyecto de Supabase. Aplícalas en
-orden en el **SQL Editor** (la lista completa y qué hace cada una está en
-[supabase/README.md](supabase/README.md)):
+Las migraciones 4–9 **ya están aplicadas** en el proyecto remoto de Supabase (confirmado por el
+usuario, octubre de 2026). Quedan aquí como referencia del esquema que corre hoy; la lista completa
+y qué hace cada una está en [supabase/README.md](supabase/README.md):
 
 | # | Archivo | Qué trae |
 |---|---|---|
@@ -144,12 +145,12 @@ orden en el **SQL Editor** (la lista completa y qué hace cada una está en
 | 8 | `20261007140000_profiles_full_name.sql` | Nombre a mostrar. |
 | 9 | `20261007150000_bug_statuses.sql` | Estados nuevos del tablero (remapea resuelto/cerrado). |
 
-**Bootstrap tras aplicarlas:** crear cuentas en *Authentication → Users* y, en `public.profiles`,
-fijar su `role` y su `full_name` a mano. **Sin al menos un `qa` no se puede operar** (todas nacen
-`viewer`). Si `full_name` queda vacío, la UI muestra el correo.
+**Bootstrap (al crear un proyecto desde cero):** crear cuentas en *Authentication → Users* y, en
+`public.profiles`, fijar su `role` y su `full_name` a mano. **Sin al menos un `qa` no se puede
+operar** (todas nacen `viewer`). Si `full_name` queda vacío, la UI muestra el correo.
 
-> No se pudo verificar de punta a punta contra la base real desde aquí (sin acceso a localhost/SQL
-> Editor en esta sesión). `lint` y `build` pasan; la verificación funcional queda del lado del usuario.
+> Las migraciones corren en la base, pero la **verificación funcional de punta a punta** (los flujos
+> de roles y la regla de completado) sigue pendiente del lado del usuario; ver los puntos 4 y 5.
 
 ### 1. Casos de Prueba — definir los valores seleccionables 🔴
 
@@ -200,7 +201,7 @@ herramienta de automatización arrastra en un solo salto y el `PointerSensor` de
 ### 4. Regla de completado: probar contra la base 🔴
 
 El código está escrito (`src/lib/completionGuard.js`, `useEpics`, `useFeatures`) y los triggers
-viven en las migraciones 4 y 9. Tras aplicarlas, probar: un Feature con un bug en `nuevo`/
+(migraciones 4 y 9) **ya están aplicados**. Falta probar: un Feature con un bug en `nuevo`/
 `en_progreso`/`bloqueado` → Completado debe avisar y no cambiar; pasar el bug a `para_despliegue`/
 `completado` y reintentar debe dejarlo pasar; igual con un Epic con features sin completar.
 
@@ -213,10 +214,10 @@ derivados*).
 
 ### 5. Autenticación y roles — probar contra la base 🔴
 
-Está todo en el código (ver [Cambios de esta sesión](#cambios-de-esta-sesión-7-oct-2026) y
-[README](README.md#autenticación-y-roles)); falta **aplicar las migraciones 5–8** y probar los tres
-flujos: QA hace todo y asigna; el Dev solo ve sus bugs y solo mueve `dev_status`; el Viewer solo lee.
-Las migraciones y el bootstrap están arriba en [Migraciones por aplicar](#migraciones-por-aplicar).
+Está todo en el código (ver [Cambios del 6–7 de octubre de 2026](#cambios-del-67-de-octubre-de-2026) y
+[README](README.md#autenticación-y-roles)) y las migraciones **ya están aplicadas**; falta **probar
+los tres flujos** contra la base: QA hace todo y asigna; el Dev solo ve sus bugs y solo mueve
+`dev_status`; el Viewer solo lee. El bootstrap de cuentas está en [Migraciones aplicadas](#migraciones-aplicadas).
 
 **Pendientes menores conocidos:**
 
