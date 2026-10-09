@@ -10,13 +10,14 @@ ver [../README.md](../README.md#autenticación-y-roles).
 ## Jerarquía
 
 ```
-epics ──┬── features ──┬── bugs ──┬── comments (bug_id)
-        │              │          └── notes    (bug_id,     SET NULL)
+epics ──┬── features ──┬── bugs ──┬── comments   (bug_id)
+        │              │          ├── bug_images (bug_id,     CASCADE)
+        │              │          └── notes      (bug_id,     SET NULL)
         │              ├── comments (feature_id)
         │              └── notes    (feature_id, SET NULL)
         └── notes (epic_id, SET NULL)
 
-profiles (1 por usuario de auth.users)  ──<  created_by (epics/features/bugs/notes)
+profiles (1 por usuario de auth.users)  ──<  created_by (epics/features/bugs/notes/bug_images)
                                              assigned_qa_id (features/bugs) · assigned_dev_id (bugs)
 ```
 
@@ -31,7 +32,8 @@ las elimina, pasan a globales.
 | [`comments`](#4-comments) | — | `20261002120100` |
 | [`notes`](#5-notes) | — (`is_pinned`, `color`) | `20261002120100` |
 | [`profiles`](#6-profiles) | `role` | `20261006130000_auth_roles.sql` |
-| [`test_cases`](#7-test_cases--pendiente) | pendiente de definir | — (aún no existe) |
+| [`bug_images`](#7-bug_images) | — | `20261009120000_bug_images.sql` |
+| [`test_cases`](#8-test_cases--pendiente) | pendiente de definir | — (aún no existe) |
 
 ---
 
@@ -185,7 +187,35 @@ Un registro por usuario de Supabase Auth. Guarda el rol que usa todo el RLS.
 
 ---
 
-## 7. `test_cases` — pendiente
+## 7. `bug_images`
+
+Imágenes (evidencia) de un bug. Tabla hija de `bugs`. Los archivos viven en **Cloudinary** (carpeta
+`qanban_bugs/<bug_id>/`, assets `authenticated` = no públicos); esta tabla solo guarda la referencia.
+
+| Columna | Tipo | Obligatorio / Default | Notas |
+|---|---|---|---|
+| `id` | uuid | auto | Clave primaria |
+| `bug_id` | uuid | sí | → `bugs`, **CASCADE** |
+| `public_id` | text | sí | Id del asset en Cloudinary: `qanban_bugs/<bug_id>/<timestamp>-<aleatorio>`. Único |
+| `format` | text | opcional | `jpg` · `png` · `webp` · `gif` |
+| `bytes` | integer | opcional | Tamaño del archivo subido |
+| `width` | integer | opcional | Ancho en px |
+| `height` | integer | opcional | Alto en px |
+| `created_at` | timestamptz | default `now()` | — |
+| `created_by` | uuid | default `auth.uid()` | → `profiles` (quién la subió) |
+
+**Estados que acepta:** ninguno.
+
+> - **No se guarda ninguna URL:** las de visualización se firman on-demand en el backend serverless
+>   (`api/bug-images/*`), porque una URL firmada no es un dato estable.
+> - **RLS** (espejo de `bugs`/`comments`): leen qa y viewer todo, y el dev solo las de **sus** bugs
+>   asignados; insertan y borran solo qa.
+> - Al borrar un bug, las filas caen por `CASCADE`; los archivos de Cloudinary los borra el backend
+>   por prefijo **antes** del delete (ver `deleteBug` en `src/hooks/useBugs.js`). Cero huérfanos.
+
+---
+
+## 8. `test_cases` — pendiente
 
 Aún **no existe** en la base. Hoy solo hay una maqueta visual en `src/pages/TestCases.jsx`
 (`COLUMNS` y `DETAIL_FIELDS`, con una fila de ejemplo). Falta definir los valores de los campos

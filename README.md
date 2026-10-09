@@ -16,7 +16,7 @@ prueba en construcción.
 > salvo el campo "Compañía" de Casos de Prueba, que está pendiente de definir
 > (ver [HANDOFF.md](HANDOFF.md)).
 
-Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs): [PENDIENTES.md](PENDIENTES.md).
+Trabajo acordado y su estado (las imágenes en los bugs ya están implementadas): [PENDIENTES.md](PENDIENTES.md).
 Estado del proyecto y decisiones de diseño: [HANDOFF.md](HANDOFF.md).
 
 ## Stack
@@ -30,7 +30,9 @@ Estado del proyecto y decisiones de diseño: [HANDOFF.md](HANDOFF.md).
 | @dnd-kit | drag & drop del tablero de bugs |
 | Supabase | `@supabase/supabase-js` con **autenticación real** (email + contraseña) y RLS por rol. Ver [Autenticación y roles](#autenticación-y-roles) |
 | react-router-dom | 7 |
-| Despliegue | Vercel (`vercel.json` reescribe todo a `index.html` para el router). Hay que definir `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en las variables de entorno del proyecto en Vercel |
+| Cloudinary | Evidencia de bugs: imágenes **privadas** (assets `authenticated`). Ver [Imágenes de bugs](#imágenes-de-bugs-cloudinary) |
+| Backend (API) | Funciones serverless en `api/` (Vercel). Único sitio con el **secreto de Cloudinary**; firma subidas y URLs de visualización autorizando con el JWT+rol de Supabase |
+| Despliegue | Vercel. `vercel.json` reescribe todo a `index.html` **salvo `/api/*`** (las funciones). Variables de entorno en Vercel: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (cliente) y las de servidor de [Imágenes de bugs](#imágenes-de-bugs-cloudinary) |
 
 ## Puesta en marcha
 
@@ -88,9 +90,10 @@ src/
     domain.js         Estados, severidades, prioridades y colores. FUENTE ÚNICA.
     position.js       Posiciones fraccionarias para el orden del tablero
     format.js         Fechas, iniciales y colores de avatar
+    images.js         Validación, compresión y llamadas al backend de imágenes
     supabaseClient.js Cliente singleton
   hooks/              Toda consulta a Supabase vive aquí, nunca en los componentes
-    useEpics · useFeatures · useBugs · useComments · useNotes · useBacklogStats · useProfiles
+    useEpics · useFeatures · useBugs · useComments · useNotes · useBacklogStats · useProfiles · useBugImages
   pages/              Backlog · BugBoard · MyBugs · TestCases · Notes · Login
   components/
     auth/             ProtectedRoute (guard de sesión y rol)
@@ -99,11 +102,14 @@ src/
       treeLayout.js   Anchos de columna y sangrías del árbol
       CreatedAtField  Selector de fecha de creación de features y bugs
       assignments.jsx Selector de asignación, "Creado por" y chips de asignado
-      BugImagesPlaceholder  Mockup (inerte) de la zona para adjuntar imágenes a un bug
+      BugImages.jsx   Subida (drag & drop + click) y galería de imágenes del bug
     testcases/        Tabla de casos de prueba (maqueta) para el drill-down
     notes/            Tarjetas y formulario de notas
     ui/               shadcn + componentes propios compartidos
   context/            ToastContext · ThemeContext · AuthContext
+api/                  Funciones serverless de Vercel (Node). NO llevan secretos al cliente
+  _lib/               auth.js (verifica JWT + rol) · cloudinary.js (SDK + firma)
+  bug-images/         sign-upload · list · delete (ver Imágenes de bugs)
 supabase/
   migrations/         Esquema versionado, en orden cronológico
   introspection/      Scripts de solo lectura
@@ -218,3 +224,42 @@ comodidad encima de eso.
 
 La anon key sigue en el bundle y es pública, pero ya **no** da acceso: `anon` fue revocado y toda
 política exige un usuario autenticado con el rol adecuado.
+
+## Imágenes de bugs (Cloudinary)
+
+Un bug puede llevar imágenes de evidencia (hasta **10**, máx. **5 MB** cada una; JPG, PNG, WebP, GIF).
+Se suben al **registrar** el bug en el Backlog y se editan (agregar/eliminar) desde el **Tablero**.
+Las ve QA (edita), y Dev y Viewer (solo lectura: Dev en "Mis Bugs", Viewer en el detalle del tablero).
+Las imágenes **no son públicas**.
+
+**Por qué hay un backend.** Para que una imagen no sea pública, Cloudinary la aloja como asset
+`authenticated` y exige una **URL firmada** para verla. Esa firma usa el **API secret**, que no puede
+ir en el bundle (`VITE_*` es público). Por eso hay funciones serverless en `api/bug-images/`:
+
+- `sign-upload` (POST, solo QA): firma la subida. El `public_id` (`qanban_bugs/<bug_id>/<ts>-<rand>`) y
+  el `type=authenticated` se fijan en el servidor. El navegador sube el archivo **directo** a Cloudinary.
+- `list` (GET, autenticado): devuelve las imágenes del bug con URLs firmadas. Consulta con el **token
+  del usuario**, así el RLS de `bug_images` decide qué ve cada rol (no se duplica la autorización).
+- `delete` (POST, solo QA): borra una imagen (`{ publicId }`) o, al borrar un bug, toda su subcarpeta
+  por prefijo (`{ bugId }`).
+
+El cliente comprime en el navegador (`browser-image-compression`) antes de subir y valida tipo/peso;
+Cloudinary debe repetir esos límites como segunda barrera.
+
+**Variables de entorno en Vercel** (de **servidor**, NO `VITE_` — nunca llegan al navegador):
+
+```
+CLOUDINARY_CLOUD_NAME=<tu-cloud-name>
+CLOUDINARY_API_KEY=<tu-api-key>
+CLOUDINARY_API_SECRET=<tu-api-secret>
+SUPABASE_URL=<misma-url-de-supabase>
+SUPABASE_ANON_KEY=<misma-anon-key>
+```
+
+En **Cloudinary**: la carpeta es `qanban_bugs`, y hay que permitir la entrega de assets
+`authenticated` por URL firmada (Settings → Security). El cliente no necesita ninguna var
+`VITE_CLOUDINARY_*`: el `cloud_name` lo devuelve `sign-upload`.
+
+> **Local:** `npm run dev` (Vite) **no** ejecuta las funciones de `api/`. Para probar la subida en
+> local usa `vercel dev` (necesita la CLI de Vercel y las variables de arriba en un `.env` local), o
+> prueba contra un Preview desplegado en Vercel.

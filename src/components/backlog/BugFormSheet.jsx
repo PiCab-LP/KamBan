@@ -7,9 +7,11 @@ import { Bug as BugIcon } from 'lucide-react';
 import { BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY } from '@/lib/domain';
 import { toDateInputValue, dateInputToTimestamp } from '@/lib/format';
 import { useProfiles } from '@/hooks/useProfiles';
+import { useAuth } from '@/context/AuthContext';
+import { useBugImages } from '@/hooks/useBugImages';
 import { StatusPills } from './StatusPills';
 import { CreatedAtField } from './CreatedAtField';
-import { BugImagesPlaceholder } from './BugImagesPlaceholder';
+import { BugImages } from './BugImages';
 import { AssignPicker, CreatedByLine } from './assignments';
 
 const MAX_TITLE = 200;
@@ -37,9 +39,16 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
     const [assignedDevId, setAssignedDevId] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    // Archivos elegidos al crear un bug: se suben cuando el bug ya existe (tras guardarlo).
+    const [pendingFiles, setPendingFiles] = useState([]);
 
     // La asignación (QA + Dev) se puede hacer tanto al registrar como al clasificar.
     const { qaUsers, devUsers, profilesById } = useProfiles();
+    // Solo QA edita (clasifica, asigna, sube/borra imágenes). Dev/viewer que abren el
+    // detalle desde el tablero lo ven en solo lectura.
+    const { role } = useAuth();
+    const canEdit = role === 'qa';
+    const { uploadImages } = useBugImages();
 
     useEffect(() => {
         if (!open) return;
@@ -51,6 +60,7 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
         setCreatedAt(toDateInputValue(bug?.created_at));
         setAssignedQaId(bug?.assigned_qa_id || null);
         setAssignedDevId(bug?.assigned_dev_id || null);
+        setPendingFiles([]);
         setError('');
     }, [open, bug]);
 
@@ -63,7 +73,7 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
                 users={qaUsers}
                 value={assignedQaId}
                 onChange={setAssignedQaId}
-                disabled={saving}
+                disabled={saving || !canEdit}
             />
             <AssignPicker
                 label="Dev asignado"
@@ -72,7 +82,7 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
                 users={devUsers}
                 value={assignedDevId}
                 onChange={setAssignedDevId}
-                disabled={saving}
+                disabled={saving || !canEdit}
             />
         </>
     );
@@ -104,13 +114,23 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
 
         setSaving(true);
         const result = await onSave(payload);
-        setSaving(false);
 
-        if (result?.success) onClose();
-        else setError(result?.error || 'No se pudo guardar el bug.');
+        if (result?.success) {
+            // Al crear, el bug ya existe: subimos las imágenes elegidas asociadas a su id.
+            if (!isBoard && !isEditing && result.id && pendingFiles.length > 0) {
+                await uploadImages(result.id, pendingFiles);
+            }
+            setSaving(false);
+            onClose();
+        } else {
+            setSaving(false);
+            setError(result?.error || 'No se pudo guardar el bug.');
+        }
     };
 
-    const heading = isBoard ? 'Clasificar Bug' : isEditing ? 'Editar Bug' : 'Nuevo Bug';
+    const heading = isBoard
+        ? (canEdit ? 'Clasificar Bug' : 'Detalle del Bug')
+        : isEditing ? 'Editar Bug' : 'Nuevo Bug';
 
     return (
         <Sheet open={open} onOpenChange={(value) => !value && onClose()}>
@@ -149,13 +169,15 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
                                 <p className="text-[10px] font-bold text-destructive uppercase tracking-wider">{error}</p>
                             )}
 
-                            <StatusPills label="Estado" map={BUG_STATUS} value={status} onChange={setStatus} disabled={saving} />
-                            <StatusPills label="Severidad" map={BUG_SEVERITY} value={severity} onChange={setSeverity} disabled={saving} />
-                            <StatusPills label="Prioridad" map={BUG_PRIORITY} value={priority} onChange={setPriority} disabled={saving} />
+                            <StatusPills label="Estado" map={BUG_STATUS} value={status} onChange={setStatus} disabled={saving || !canEdit} />
+                            <StatusPills label="Severidad" map={BUG_SEVERITY} value={severity} onChange={setSeverity} disabled={saving || !canEdit} />
+                            <StatusPills label="Prioridad" map={BUG_PRIORITY} value={priority} onChange={setPriority} disabled={saving || !canEdit} />
 
                             {assignFields}
 
                             {isEditing && <CreatedByLine createdBy={bug?.created_by} profilesById={profilesById} />}
+
+                            <BugImages bugId={bug?.id} canEdit={canEdit} />
                         </>
                     ) : (
                         <>
@@ -215,7 +237,7 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
 
                             {isEditing && <CreatedByLine createdBy={bug?.created_by} profilesById={profilesById} />}
 
-                            <BugImagesPlaceholder />
+                            <BugImages bugId={bug?.id} canEdit={canEdit} onPendingChange={setPendingFiles} />
 
                             {!isEditing && (
                                 <p className="text-[10px] text-muted-foreground/50">
@@ -233,15 +255,17 @@ export function BugFormSheet({ open, onClose, bug, onSave, mode = 'backlog' }) {
                         disabled={saving}
                         className="text-xs font-bold h-10 px-5 rounded-xl hover:bg-muted"
                     >
-                        Cancelar
+                        {canEdit ? 'Cancelar' : 'Cerrar'}
                     </Button>
-                    <Button
-                        onClick={handleSave}
-                        disabled={saving || (!isBoard && !title.trim())}
-                        className="text-xs font-black h-10 px-7 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
-                    >
-                        {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Registrar Bug'}
-                    </Button>
+                    {canEdit && (
+                        <Button
+                            onClick={handleSave}
+                            disabled={saving || (!isBoard && !title.trim())}
+                            className="text-xs font-black h-10 px-7 rounded-xl bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all disabled:opacity-50"
+                        >
+                            {saving ? 'Guardando...' : isEditing ? 'Guardar cambios' : 'Registrar Bug'}
+                        </Button>
+                    )}
                 </div>
             </SheetContent>
         </Sheet>

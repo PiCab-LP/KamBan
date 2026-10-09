@@ -4,54 +4,34 @@ Trabajo acordado que **todavía no se ha hecho**. Es una lista de lo que viene; 
 estado actual del proyecto y las decisiones ya tomadas, ver [HANDOFF.md](HANDOFF.md)
 (que además tiene sus propios pendientes: Casos de Prueba, "Compañía", drag & drop sin probar).
 
-Última actualización: 5 de octubre de 2026.
+Última actualización: 9 de octubre de 2026.
 
 ---
 
-## 1. Imágenes en los bugs 🖼️
+## 1. Imágenes en los bugs 🖼️ — ✅ IMPLEMENTADO (9 oct 2026)
 
-**Estado:** hay un **mockup visual** ([BugImagesPlaceholder.jsx](src/components/backlog/BugImagesPlaceholder.jsx)),
-mostrado en el formulario de bug del Backlog con la etiqueta "Próximamente". Es inerte: no hay
-`<input type="file">`, no valida, no sube ni guarda nada. Solo dibuja la zona de arrastrar y soltar.
-Al implementar la función hay que **reemplazarlo** por el componente real, no extenderlo.
+Ya está hecho. Detalle de la arquitectura y de la configuración (variables de entorno en Vercel y
+en Cloudinary) en [README.md](README.md#imágenes-de-bugs-cloudinary) y [HANDOFF.md](HANDOFF.md).
+Resumen de lo que se construyó y de cómo quedaron las decisiones que estaban abiertas:
 
-Al **registrar un bug** (formulario del Backlog, `BugFormSheet` en modo `backlog`) se podrán
-adjuntar imágenes como evidencia.
+- **Proveedor:** Cloudinary, carpeta `qanban_bugs`, un asset por imagen en `qanban_bugs/<bug_id>/`.
+  Los assets son **`authenticated`** (no públicos): se ven solo con URL firmada que genera el backend.
+- **Backend nuevo:** funciones serverless en `api/bug-images/*` (Vercel) que firman la subida y la
+  visualización y autorizan con el **JWT + rol** de Supabase. El API secret vive solo en Vercel
+  (variable no-`VITE_`). Reemplazó al plan anterior del *unsigned upload preset* público, que no
+  cumplía la privacidad por rol.
+- **Límites:** máximo **5 MB por imagen** (con **compresión automática** en el navegador vía
+  `browser-image-compression`) y hasta **10 imágenes por bug**. Formatos **JPG, PNG, WebP, GIF**.
+- **Dónde:** se suben al **crear** el bug (Backlog) y se editan (agregar/eliminar) desde el **Tablero**;
+  galería de solo lectura para Dev (en "Mis Bugs") y Viewer. La tarjeta del tablero muestra un
+  indicador de clip con el conteo.
+- **Almacenamiento:** tabla hija `bug_images` (`public_id`, `format`, metadata) con `ON DELETE CASCADE`
+  y RLS espejo de `bugs`/`comments` (migración `20261009120000_bug_images.sql`). No se guarda URL:
+  las firmadas se generan on-demand.
+- **Borrado:** quitar una imagen la borra de Cloudinary; borrar un bug limpia su subcarpeta completa
+  por prefijo antes del `CASCADE` (cero huérfanos).
+- Doble validación de tipo/peso (navegador + Cloudinary), hook propio (`useBugImages`) con toasts y
+  `{ success }`, siguiendo las convenciones del proyecto.
 
-### Requisitos acordados
-
-- **Formatos de imagen** como JPG y PNG, más los otros que se encuentren razonables
-  (candidatos: JPEG, WebP, GIF; HEIC/AVIF a evaluar, porque no todos los navegadores los muestran).
-- **Peso máximo: 5 MB.**
-- **Proveedor: Cloudinary.** La integración se hará más adelante, no en esta etapa.
-
-### Por decidir antes de implementarlo
-
-- ¿Los 5 MB son **por imagen** o en total por bug? (Se asume por imagen.)
-- ¿Cuántas imágenes como máximo por bug?
-- ¿Se pueden **añadir o quitar** al editar un bug, o solo al crearlo?
-- ¿Dónde se ven? Lo natural es una galería en el formulario del Backlog y de solo lectura en
-  la hoja *Clasificar Bug* del Tablero, quizá con una miniatura en la tarjeta.
-- **Dónde guardar las referencias en Supabase.** Opciones: una tabla `bug_images`
-  (`bug_id`, `url`, `public_id`, `created_at`, con `ON DELETE CASCADE` como el resto de la
-  jerarquía) o una columna `jsonb` en `bugs`. La tabla permite borrar una imagen sin
-  reescribir el bug y es más coherente con el esquema actual; habría que escribir su migración
-  y su política RLS en `supabase/migrations/`.
-- Qué pasa con las imágenes en Cloudinary **al borrar un bug** (el `CASCADE` borra las filas,
-  pero no los archivos remotos).
-
-### Notas para cuando se haga
-
-- **Validar el tipo y el peso en el navegador** antes de subir (mensaje claro si se pasa de
-  5 MB o el formato no es válido), y **repetir los límites en Cloudinary** (formatos permitidos y
-  tamaño máximo en el upload preset), porque la validación del navegador se puede saltar.
-- **No poner el API secret de Cloudinary en el frontend.** Todo lo que lleva `VITE_` viaja
-  en el bundle y es público (igual que la anon key de Supabase, ver el aviso de seguridad
-  del [README](README.md#seguridad)). Para subir directo desde el navegador se usa un
-  *unsigned upload preset*; si hace falta firmar o borrar imágenes, eso requiere un backend o
-  una función serverless. Las variables nuevas (`VITE_CLOUDINARY_CLOUD_NAME`, etc.) también
-  hay que cargarlas en Vercel y documentarlas en el README.
-- Seguir las convenciones del proyecto: la subida va en un **hook** (no en el componente),
-  que devuelva `{ success }` / `{ success: false, error }` y lance sus toasts.
-- Mientras el proyecto no tenga autenticación, cualquiera podría subir archivos a la cuenta
-  de Cloudinary con ese preset. Poner límites de cuota en Cloudinary y no subir material sensible.
+> Pendiente de evaluación futura: URLs firmadas con expiración (token-based auth de Cloudinary); hoy
+> la firma no caduca pero solo la entrega el backend a quien el RLS autoriza.

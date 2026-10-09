@@ -2,7 +2,7 @@ import { useEffect, useState, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Paperclip } from 'lucide-react';
 import {
   DndContext,
   closestCorners,
@@ -86,6 +86,7 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false,
   const status = BUG_STATUS[bug.status];
   const statusColor = status?.color || 'var(--primary)';
   const devStage = bug.dev_status && bug.dev_status !== 'pendiente' ? DEV_STATUS[bug.dev_status] : null;
+  const imageCount = bug.bug_images?.[0]?.count ?? 0;
 
   return (
     <Card
@@ -113,8 +114,8 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false,
         )}
 
         <div
-          className={`flex-1 flex flex-col gap-2 px-3 py-2.5 select-none min-w-0 ${readOnly ? '' : 'cursor-pointer'}`}
-          onClick={readOnly ? undefined : () => onEdit(bug)}
+          className="flex-1 flex flex-col gap-2 px-3 py-2.5 select-none min-w-0 cursor-pointer"
+          onClick={() => onEdit(bug)}
         >
           {/* Contexto: en qué Epic › Feature vive el bug */}
           {(epicName || featureName) && (
@@ -145,6 +146,15 @@ const BugCard = ({ bug, isOverlay, dragHandleProps, onEdit, highlighted = false,
               <span className="font-bold text-muted-foreground/60 shrink-0">Prioridad:</span>
               <StatusBadge value={bug.priority} map={BUG_PRIORITY} showDot={false} className="!px-2 !py-0.5 !text-[9px]" />
             </div>
+            {imageCount > 0 && (
+              <div className="flex items-center gap-1.5">
+                <span className="font-bold text-muted-foreground/60 shrink-0">Imágenes:</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[9px] font-black">
+                  <Paperclip size={10} strokeWidth={2.5} />
+                  {imageCount}
+                </span>
+              </div>
+            )}
             {devStage && (
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-muted-foreground/60 shrink-0">Avance Dev:</span>

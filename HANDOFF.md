@@ -1,12 +1,13 @@
 # Handoff — QANBAN
 
-Estado al **9 de octubre de 2026**. Todo el trabajo descrito aquí está **commiteado** (árbol
-limpio; último commit `914893b`) y las **migraciones ya están aplicadas** en el proyecto remoto de
-Supabase (ver [Migraciones aplicadas](#migraciones-aplicadas)). Lo que queda son pruebas
+Estado al **9 de octubre de 2026**. El trabajo del ciclo 6–7 oct está **commiteado** (hasta
+`914893b`) y sus **migraciones aplicadas** en Supabase. La **feature de imágenes de bugs (Cloudinary)**
+—con su capa de backend serverless nueva— está **implementada en el working tree, pendiente de
+commitear** y de aplicar su migración `20261009120000_bug_images.sql` (ver
+[Cambios del 9 de octubre de 2026](#cambios-del-9-de-octubre-de-2026)). Lo que queda son pruebas
 funcionales contra la base y los pendientes de abajo. `npm run lint` y `npm run build` pasan.
 
-Trabajo acordado que aún no se hace (p. ej. imágenes en los bugs con Cloudinary): ver
-[PENDIENTES.md](PENDIENTES.md).
+Casi todo lo acordado ya está hecho; el estado de cada cosa vive en [PENDIENTES.md](PENDIENTES.md).
 
 Para montar el entorno, ver [README.md](README.md). Este documento cubre **en qué punto
 está el trabajo, qué quedó pendiente y por qué se tomaron ciertas decisiones**.
@@ -53,7 +54,31 @@ estados nuevos del tablero— está **aplicado** en el proyecto remoto (ver
 - **Notas**: autor, fechas de creado/editado con hora, vínculo a Epic/Feature/Bug, colores, fijar.
 - **Regla de completado**: un Feature o Epic no pasa a "Completado" con bugs abiertos o, en el Epic,
   features sin completar (triggers + aviso en el frontend).
+- **Imágenes de bugs (Cloudinary)**: evidencia privada por bug (hasta 10, 5 MB c/u; drag & drop + click,
+  compresión en el navegador). QA sube/edita; Dev/Viewer ven. Entrega firmada vía backend serverless
+  (`api/`). Ver [README](README.md#imágenes-de-bugs-cloudinary).
 - Modo claro/oscuro, instantáneo. Responsive (desktop-first, hasta laptops pequeñas).
+
+### Cambios del 9 de octubre de 2026
+
+- **Imágenes de bugs con Cloudinary** (migración `20261009120000_bug_images.sql`). Lo que estaba en
+  PENDIENTES ya está hecho. Novedad importante: el proyecto **estrena una capa de backend serverless**
+  (`api/`, funciones de Vercel) — antes era SPA puro. Es el único sitio con el **secreto de Cloudinary**.
+  - **Backend** `api/bug-images/`: `sign-upload` (firma la subida, fija `public_id` y `type=authenticated`,
+    solo QA), `list` (URLs firmadas, autoriza reusando el RLS con el token del usuario), `delete` (una
+    imagen o, por prefijo, toda la subcarpeta de un bug). Helpers en `api/_lib/` (verificación de JWT+rol,
+    config de Cloudinary). Nada de esto usa service-role.
+  - **Frontend**: `src/lib/images.js` (validar/comprimir/llamar al API), hook `useBugImages`, componente
+    `BugImages` (reemplazó al mockup `BugImagesPlaceholder`, eliminado). Montado en `BugFormSheet`
+    (backlog crea; board edita QA / ve viewer) y galería de solo lectura en `MyBugs`. Indicador de clip
+    con conteo en la tarjeta del tablero (`bug_images(count)` embebido en el select de `useBugs`).
+  - `createBug` ahora devuelve el `id` (`.select('id').single()`) para asociar las imágenes al crear;
+    `deleteBug` limpia Cloudinary por prefijo **antes** del delete (cero huérfanos).
+  - **Imágenes privadas**: assets `authenticated`; sin URL firmada, Cloudinary responde 401. La firma la
+    da el backend solo a quien el RLS autoriza (Dev solo sus bugs asignados).
+  - **Config nueva**: `vercel.json` migrado a `rewrites` que excluyen `/api/*`; variables de servidor en
+    Vercel (`CLOUDINARY_*`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`); ESLint con bloque aparte para `api/` (Node).
+    Dependencias: `cloudinary` (backend) y `browser-image-compression` (frontend).
 
 ### Cambios del 6–7 de octubre de 2026
 
@@ -144,6 +169,12 @@ y qué hace cada una está en [supabase/README.md](supabase/README.md):
 | 7 | `20261007130000_notes_created_by.sql` | Autor de las notas. |
 | 8 | `20261007140000_profiles_full_name.sql` | Nombre a mostrar. |
 | 9 | `20261007150000_bug_statuses.sql` | Estados nuevos del tablero (remapea resuelto/cerrado). |
+| 10 | `20261009120000_bug_images.sql` | 🔴 **Por aplicar.** Tabla `bug_images` + RLS por rol (feature de imágenes). |
+
+> La migración **10 aún no está aplicada**: pégala en el SQL Editor junto con el deploy de la feature
+> de imágenes. Además, configura en Vercel las variables de servidor de Cloudinary/Supabase y, en
+> Cloudinary, la carpeta `qanban_bugs` y la entrega firmada de assets `authenticated` (ver
+> [README](README.md#imágenes-de-bugs-cloudinary)).
 
 **Bootstrap (al crear un proyecto desde cero):** crear cuentas en *Authentication → Users* y, en
 `public.profiles`, fijar su `role` y su `full_name` a mano. **Sin al menos un `qa` no se puede
@@ -350,5 +381,7 @@ cada píxel cuenta.
 | La pantalla del Dev | `src/pages/MyBugs.jsx` + `setDevStatus` en `src/hooks/useBugs.js` |
 | Nombres / asignación / creador | `src/hooks/useProfiles.js` (`profileDisplayName`) + `src/components/backlog/assignments.jsx` |
 | Las notas | `src/pages/Notes.jsx` + `src/components/notes/NoteCard.jsx` + `src/hooks/useNotes.js` |
+| Imágenes de bugs (UI) | `src/components/backlog/BugImages.jsx` + `src/hooks/useBugImages.js` + `src/lib/images.js` |
+| Imágenes de bugs (backend/firma) | `api/bug-images/` + `api/_lib/` + [README](README.md#imágenes-de-bugs-cloudinary) |
 | El modelo completo (tablas, estados) | `supabase/MODELO.md` |
 | El esquema SQL | `supabase/README.md` y `supabase/migrations/` |

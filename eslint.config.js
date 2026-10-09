@@ -8,6 +8,8 @@ export default defineConfig([
   globalIgnores(['dist']),
   {
     files: ['**/*.{js,jsx}'],
+    // El backend serverless (api/) corre en Node, no en el navegador: se lintea aparte.
+    ignores: ['api/**'],
     extends: [
       js.configs.recommended,
       reactHooks.configs.flat.recommended,
@@ -19,6 +21,16 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
+    },
+  },
+  {
+    // Funciones serverless de Vercel (Node, ESM).
+    files: ['api/**/*.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: globals.node,
+      ecmaVersion: 2022,
+      sourceType: 'module',
     },
   },
 ])

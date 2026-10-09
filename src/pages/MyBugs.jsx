@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Bug as BugIcon, MessageSquare, ClipboardCheck } from 'lucide-react';
+import { Bug as BugIcon, MessageSquare, ClipboardCheck, Paperclip } from 'lucide-react';
 import { useBugs } from '../hooks/useBugs';
 import { BUG_STATUS, BUG_SEVERITY, BUG_PRIORITY, DEV_STATUS } from '../lib/domain';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { StatusPills } from '../components/backlog/StatusPills';
 import { CommentsPanel } from '../components/backlog/CommentsPanel';
+import { BugImages } from '../components/backlog/BugImages';
 import { LoadingSkeleton } from '../components/ui/StatCard';
 
 /**
@@ -18,6 +19,7 @@ export default function MyBugs() {
     const { bugs, loading, setDevStatus } = useBugs();
     const [commentTarget, setCommentTarget] = useState(null);
     const [savingId, setSavingId] = useState(null);
+    const [openImagesId, setOpenImagesId] = useState(null);
 
     const handleDevStatus = async (bug, next) => {
         if (next === bug.dev_status) return;
@@ -53,6 +55,8 @@ export default function MyBugs() {
                         const featureName = bug.features?.name;
                         const epicName = bug.features?.epics?.name;
                         const severityColor = BUG_SEVERITY[bug.severity]?.color || 'var(--primary)';
+                        const imageCount = bug.bug_images?.[0]?.count ?? 0;
+                        const imagesOpen = openImagesId === bug.id;
                         return (
                             <Card key={bug.id} className="border-border/40 bg-card shadow-sm rounded-2xl overflow-hidden">
                                 <CardContent className="p-5 space-y-4">
@@ -92,15 +96,33 @@ export default function MyBugs() {
                                             onChange={(next) => handleDevStatus(bug, next)}
                                             disabled={savingId === bug.id}
                                         />
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => setCommentTarget({ type: 'bug', id: bug.id, title: bug.title })}
-                                            className="h-9 gap-2 text-xs font-bold rounded-xl shrink-0 self-start sm:self-auto"
-                                        >
-                                            <MessageSquare size={14} />
-                                            Comentarios
-                                        </Button>
+                                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                                            {imageCount > 0 && (
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setOpenImagesId(imagesOpen ? null : bug.id)}
+                                                    className="h-9 gap-2 text-xs font-bold rounded-xl"
+                                                >
+                                                    <Paperclip size={14} />
+                                                    {imagesOpen ? 'Ocultar imágenes' : `Imágenes (${imageCount})`}
+                                                </Button>
+                                            )}
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setCommentTarget({ type: 'bug', id: bug.id, title: bug.title })}
+                                                className="h-9 gap-2 text-xs font-bold rounded-xl"
+                                            >
+                                                <MessageSquare size={14} />
+                                                Comentarios
+                                            </Button>
+                                        </div>
                                     </div>
+
+                                    {imagesOpen && (
+                                        <div className="pt-4 border-t border-border/40">
+                                            <BugImages bugId={bug.id} canEdit={false} />
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         );

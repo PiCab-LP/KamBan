@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useToast } from '../context/ToastContext';
+import { useBugImages } from './useBugImages';
 import { positionAtEnd, positionBetween } from '../lib/position';
 
 const BUG_FIELDS = `
     id, feature_id, title, description, status, severity, priority,
     position, created_at,
-    created_by, assigned_qa_id, assigned_dev_id, dev_status
+    created_by, assigned_qa_id, assigned_dev_id, dev_status,
+    bug_images ( count )
 `;
 
 /**
@@ -15,6 +17,7 @@ const BUG_FIELDS = `
  */
 export function useBugs({ featureId = null } = {}) {
     const { showToast } = useToast();
+    const { deleteAllForBug } = useBugImages();
     const [bugs, setBugs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -51,15 +54,17 @@ export function useBugs({ featureId = null } = {}) {
         try {
             const targetStatus = bugData.status || 'nuevo';
             const sameColumn = bugs.filter((b) => b.status === targetStatus);
-            const { error } = await supabase.from('bugs').insert([{
+            // .select() para recuperar el id: el formulario lo necesita para asociar
+            // las imágenes recién subidas al bug que acaba de nacer.
+            const { data, error } = await supabase.from('bugs').insert([{
                 ...bugData,
                 feature_id: bugData.feature_id ?? featureId,
                 position: positionAtEnd(sameColumn),
-            }]);
+            }]).select('id').single();
             if (error) throw error;
             showToast('Bug registrado correctamente', 'success');
             await fetchBugs();
-            return { success: true };
+            return { success: true, id: data.id };
         } catch (err) {
             console.error('Error creating bug:', err.message);
             return { success: false, error: err.message };
@@ -134,6 +139,14 @@ export function useBugs({ featureId = null } = {}) {
 
     const deleteBug = async (id) => {
         try {
+            // Primero borra los archivos de Cloudinary (por prefijo). Si falla, se aborta
+            // el borrado del bug para no dejar imágenes huérfanas en Cloudinary.
+            const cleanup = await deleteAllForBug(id);
+            if (!cleanup.success) {
+                showToast('No se pudieron eliminar las imágenes del bug. Intenta de nuevo.', 'error');
+                return { success: false, error: cleanup.error };
+            }
+            // El delete del bug arrastra las filas de bug_images por CASCADE.
             const { error } = await supabase.from('bugs').delete().eq('id', id);
             if (error) throw error;
             setBugs((prev) => prev.filter((b) => b.id !== id));

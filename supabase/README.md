@@ -30,6 +30,7 @@ pegando cada archivo completo y en este orden:
 | 7 | `migrations/20261007130000_notes_created_by.sql` | `created_by` en notes (autor de la nota). |
 | 8 | `migrations/20261007140000_profiles_full_name.sql` | `full_name` en profiles (nombre a mostrar). |
 | 9 | `migrations/20261007150000_bug_statuses.sql` | Estados del tablero: nuevo · en_progreso · bloqueado · para_despliegue · completado. Remapea resuelto/cerrado. |
+| 10 | `migrations/20261009120000_bug_images.sql` | Tabla `bug_images` (evidencia en Cloudinary) + su RLS por rol. |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.
@@ -37,12 +38,17 @@ de la consulta 5 de la introspección para confirmar qué funciones va a borrar 
 ## Modelo
 
 ```
-epics ──┬── features ──┬── bugs ──┬── comments (bug_id)
-        │              │          └── notes    (bug_id,     SET NULL)
+epics ──┬── features ──┬── bugs ──┬── comments   (bug_id)
+        │              │          ├── bug_images (bug_id,     CASCADE)
+        │              │          └── notes      (bug_id,     SET NULL)
         │              ├── comments (feature_id)
         │              └── notes    (feature_id, SET NULL)
         └── notes (epic_id, SET NULL)
 ```
+
+`bug_images` guarda la referencia (public_id + metadata) de las imágenes de un bug alojadas en
+Cloudinary; borra en **CASCADE** con el bug. Detalle en [MODELO.md](MODELO.md#7-bug_images) y la
+arquitectura (backend que firma subida/visualización) en el [README raíz](../README.md#imágenes-de-bugs-cloudinary).
 
 La jerarquía borra en **CASCADE** hacia abajo: borrar un Epic elimina sus Features y
 sus Bugs. Las notas usan **SET NULL** porque son contenido escrito a mano y no deben
