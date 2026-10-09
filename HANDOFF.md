@@ -1,11 +1,12 @@
 # Handoff — QANBAN
 
 Estado al **9 de octubre de 2026**. El trabajo del ciclo 6–7 oct está **commiteado** (hasta
-`914893b`) y sus **migraciones aplicadas** en Supabase. La **feature de imágenes de bugs (Cloudinary)**
-—con su capa de backend serverless nueva— está **implementada en el working tree, pendiente de
-commitear** y de aplicar su migración `20261009120000_bug_images.sql` (ver
-[Cambios del 9 de octubre de 2026](#cambios-del-9-de-octubre-de-2026)). Lo que queda son pruebas
-funcionales contra la base y los pendientes de abajo. `npm run lint` y `npm run build` pasan.
+`914893b`) y sus **migraciones aplicadas** en Supabase. Lo del **9 de octubre** (imágenes de bugs con
+Cloudinary + su capa de backend serverless, y la **ampliación de estados** de Epic/Feature y de la
+severidad de bugs) está **implementado en el working tree, pendiente de commitear** y de aplicar sus
+migraciones **10 y 11** (ver [Cambios del 9 de octubre de 2026](#cambios-del-9-de-octubre-de-2026)).
+Lo que queda son pruebas funcionales contra la base y los pendientes de abajo. `npm run lint` y
+`npm run build` pasan.
 
 Casi todo lo acordado ya está hecho; el estado de cada cosa vive en [PENDIENTES.md](PENDIENTES.md).
 
@@ -61,6 +62,12 @@ estados nuevos del tablero— está **aplicado** en el proyecto remoto (ver
 
 ### Cambios del 9 de octubre de 2026
 
+- **Estados ampliados** (migración `20261009130000_entity_statuses_and_severity.sql`). Epic y Feature
+  suman `bloqueado` y `para_despliegue` (quedan: pendiente · en_progreso · en_qa · bloqueado ·
+  para_despliegue · completado). La severidad de bugs suma `bloqueante` entre crítica y alta (crítica ·
+  bloqueante · alta · media · baja). Solo agrega valores (sin remapear datos). Cambió `ENTITY_STATUS` y
+  `BUG_SEVERITY` en `src/lib/domain.js` + los tres `CHECK`. Los guards de completado **no** cambiaron
+  (solo disparan al pasar a 'completado' y cuentan features con `status <> 'completado'`).
 - **Imágenes de bugs con Cloudinary** (migración `20261009120000_bug_images.sql`). Lo que estaba en
   PENDIENTES ya está hecho. Novedad importante: el proyecto **estrena una capa de backend serverless**
   (`api/`, funciones de Vercel) — antes era SPA puro. Es el único sitio con el **secreto de Cloudinary**.
@@ -170,11 +177,12 @@ y qué hace cada una está en [supabase/README.md](supabase/README.md):
 | 8 | `20261007140000_profiles_full_name.sql` | Nombre a mostrar. |
 | 9 | `20261007150000_bug_statuses.sql` | Estados nuevos del tablero (remapea resuelto/cerrado). |
 | 10 | `20261009120000_bug_images.sql` | 🔴 **Por aplicar.** Tabla `bug_images` + RLS por rol (feature de imágenes). |
+| 11 | `20261009130000_entity_statuses_and_severity.sql` | 🔴 **Por aplicar.** `bloqueado`/`para_despliegue` en Epic/Feature y `bloqueante` en severidad. |
 
-> La migración **10 aún no está aplicada**: pégala en el SQL Editor junto con el deploy de la feature
-> de imágenes. Además, configura en Vercel las variables de servidor de Cloudinary/Supabase y, en
-> Cloudinary, la carpeta `qanban_bugs` y la entrega firmada de assets `authenticated` (ver
-> [README](README.md#imágenes-de-bugs-cloudinary)).
+> Las migraciones **10 y 11 aún no están aplicadas**: pégalas en el SQL Editor junto con el deploy.
+> La 11 solo agrega valores a los `CHECK` (sin remapear datos). Para la 10, además, configura en Vercel
+> las variables de servidor de Cloudinary/Supabase y, en Cloudinary, la carpeta `qanban_bugs` y la
+> entrega firmada de assets `authenticated` (ver [README](README.md#imágenes-de-bugs-cloudinary)).
 
 **Bootstrap (al crear un proyecto desde cero):** crear cuentas en *Authentication → Users* y, en
 `public.profiles`, fijar su `role` y su `full_name` a mano. **Sin al menos un `qa` no se puede

@@ -26,9 +26,9 @@ las elimina, pasan a globales.
 
 | Tabla | ¿Campos de estado? | Migración |
 |---|---|---|
-| [`epics`](#1-epics) | `status` | `20261002120100_create_qa_schema.sql` |
-| [`features`](#2-features) | `status` | `20261002120100` |
-| [`bugs`](#3-bugs) | `status`, `severity`, `priority`, `dev_status` | `20261002120100` + `20261006130000` + `20261007150000` |
+| [`epics`](#1-epics) | `status` | `20261002120100` + `20261009130000` |
+| [`features`](#2-features) | `status` | `20261002120100` + `20261009130000` |
+| [`bugs`](#3-bugs) | `status`, `severity`, `priority`, `dev_status` | `20261002120100` + `20261006130000` + `20261007150000` + `20261009130000` |
 | [`comments`](#4-comments) | — | `20261002120100` |
 | [`notes`](#5-notes) | — (`is_pinned`, `color`) | `20261002120100` |
 | [`profiles`](#6-profiles) | `role` | `20261006130000_auth_roles.sql` |
@@ -50,7 +50,7 @@ Nivel 1 de la jerarquía. Agrupa features.
 | `created_at` | timestamptz | default `now()` | Editable desde la UI |
 | `updated_at` | timestamptz | default `now()` | Lo mantiene el trigger `set_updated_at` |
 
-**`status`:** `pendiente` · `en_progreso` · `en_qa` · `completado`
+**`status`:** `pendiente` · `en_progreso` · `en_qa` · `bloqueado` · `para_despliegue` · `completado`
 
 > `completado` queda **bloqueado** (SQLSTATE `QA001`) si el Epic tiene features sin completar o
 > bugs abiertos. Constante `ENTITY_STATUS` en `src/lib/domain.js`.
@@ -73,7 +73,7 @@ Nivel 2. Cuelga de un Epic, agrupa bugs. Comparte el vocabulario de estados con 
 | `created_at` | timestamptz | default `now()` | Editable desde la UI |
 | `updated_at` | timestamptz | default `now()` | Trigger |
 
-**`status`:** `pendiente` · `en_progreso` · `en_qa` · `completado`
+**`status`:** `pendiente` · `en_progreso` · `en_qa` · `bloqueado` · `para_despliegue` · `completado`
 
 > `completado` bloqueado si el feature tiene bugs en `nuevo`/`en_progreso`. El feature se asigna
 > solo a **QA**, nunca a un Dev; se puede asignar al crear o al editar.
@@ -107,7 +107,7 @@ Nivel 3. Cuelga de un feature. Es la tabla con más campos de estado.
 | Campo | Valores | Constante |
 |---|---|---|
 | `status` | `nuevo` · `en_progreso` · `bloqueado` · `para_despliegue` · `completado` | `BUG_STATUS` |
-| `severity` | `critica` · `alta` · `media` · `baja` | `BUG_SEVERITY` |
+| `severity` | `critica` · `bloqueante` · `alta` · `media` · `baja` | `BUG_SEVERITY` |
 | `priority` | `alta` · `media` · `baja` | `BUG_PRIORITY` |
 | `dev_status` | `pendiente` · `corregido` · `revisado` | `DEV_STATUS` |
 

@@ -31,6 +31,7 @@ pegando cada archivo completo y en este orden:
 | 8 | `migrations/20261007140000_profiles_full_name.sql` | `full_name` en profiles (nombre a mostrar). |
 | 9 | `migrations/20261007150000_bug_statuses.sql` | Estados del tablero: nuevo · en_progreso · bloqueado · para_despliegue · completado. Remapea resuelto/cerrado. |
 | 10 | `migrations/20261009120000_bug_images.sql` | Tabla `bug_images` (evidencia en Cloudinary) + su RLS por rol. |
+| 11 | `migrations/20261009130000_entity_statuses_and_severity.sql` | Agrega `bloqueado`/`para_despliegue` a Epic/Feature y `bloqueante` a la severidad de bugs. |
 
 Antes del paso 1: **backup** desde Dashboard → Database → Backups, y revisar la salida
 de la consulta 5 de la introspección para confirmar qué funciones va a borrar el script.

@@ -9,10 +9,12 @@
 
 // Epic y Feature comparten vocabulario de estados.
 export const ENTITY_STATUS = {
-    pendiente:   { label: 'Pendiente',   color: 'oklch(0.60 0.02 260)' },
-    en_progreso: { label: 'En progreso', color: 'oklch(0.58 0.20 277)' },
-    en_qa:       { label: 'En QA',       color: 'oklch(0.70 0.16 60)' },
-    completado:  { label: 'Completado',  color: 'oklch(0.60 0.16 150)' },
+    pendiente:       { label: 'Pendiente',       color: 'oklch(0.60 0.02 260)' },
+    en_progreso:     { label: 'En progreso',     color: 'oklch(0.58 0.20 277)' },
+    en_qa:           { label: 'En QA',           color: 'oklch(0.70 0.16 60)' },
+    bloqueado:       { label: 'Bloqueado',       color: 'oklch(0.58 0.22 25)' },
+    para_despliegue: { label: 'Para despliegue', color: 'oklch(0.68 0.15 230)' },
+    completado:      { label: 'Completado',      color: 'oklch(0.60 0.16 150)' },
 };
 
 export const BUG_STATUS = {
@@ -24,10 +26,11 @@ export const BUG_STATUS = {
 };
 
 export const BUG_SEVERITY = {
-    critica: { label: 'Crítica', color: 'oklch(0.58 0.22 25)' },
-    alta:    { label: 'Alta',    color: 'oklch(0.65 0.19 45)' },
-    media:   { label: 'Media',   color: 'oklch(0.70 0.16 75)' },
-    baja:    { label: 'Baja',    color: 'oklch(0.60 0.08 220)' },
+    critica:    { label: 'Crítica',    color: 'oklch(0.58 0.22 25)' },
+    bloqueante: { label: 'Bloqueante', color: 'oklch(0.60 0.21 35)' },
+    alta:       { label: 'Alta',       color: 'oklch(0.65 0.19 45)' },
+    media:      { label: 'Media',      color: 'oklch(0.70 0.16 75)' },
+    baja:       { label: 'Baja',       color: 'oklch(0.60 0.08 220)' },
 };
 
 export const BUG_PRIORITY = {
