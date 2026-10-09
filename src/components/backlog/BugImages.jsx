@@ -94,6 +94,31 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
         setBusy(false);
     }, [total, isCreate, bugId, uploadImages, listImages, showToast]);
 
+    // Pegar desde el portapapeles (Ctrl/Cmd+V), p. ej. una captura de pantalla, sin
+    // tener que guardarla como archivo. Solo se activa cuando se puede editar y solo
+    // toma elementos que sean imagen; si no hay imagen en el portapapeles, no hace nada
+    // (deja pasar el pegado normal de texto en otros campos).
+    useEffect(() => {
+        if (!canEdit) return undefined;
+        const onPaste = (e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            const imageFiles = [];
+            for (const item of items) {
+                if (item.kind === 'file' && item.type.startsWith('image/')) {
+                    const file = item.getAsFile();
+                    if (file) imageFiles.push(file);
+                }
+            }
+            if (imageFiles.length) {
+                e.preventDefault();
+                addFiles(imageFiles);
+            }
+        };
+        window.addEventListener('paste', onPaste);
+        return () => window.removeEventListener('paste', onPaste);
+    }, [canEdit, addFiles]);
+
     const onDrop = (e) => {
         e.preventDefault();
         setDragOver(false);
@@ -162,7 +187,7 @@ export function BugImages({ bugId, canEdit = false, onPendingChange }) {
                         <ImagePlus size={22} strokeWidth={1.8} className="text-muted-foreground/70" />
                     )}
                     <p className="text-xs font-bold text-foreground/80">
-                        {full ? `Alcanzaste el máximo de ${MAX_IMAGES} imágenes` : 'Arrastra imágenes aquí o haz clic para elegirlas'}
+                        {full ? `Alcanzaste el máximo de ${MAX_IMAGES} imágenes` : 'Arrastra imágenes, haz clic para elegirlas o pega una captura (Ctrl/Cmd+V)'}
                     </p>
                     <p className="text-[10px] text-muted-foreground/60">
                         JPG, PNG, WebP o GIF · máx. 5 MB por imagen
